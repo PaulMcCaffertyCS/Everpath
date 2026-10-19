@@ -1,0 +1,61 @@
+{
+  "author": "Paul McCafferty",
+  "name": "everpath",
+  "description": "A code-first, generative 2D adventure game.",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist-electron/main/main.js",
+  "scripts": {
+    "build:preload": "tsc -p tsconfig.preload.json",
+    "build:electron": "tsc -p tsconfig.electron.json && node -e \"const fs=require('node:fs'); for (const [from,to] of [['dist-electron/main/main.js','dist-electron/main/main.cjs'],['dist-electron/preload/preload.js','dist-electron/preload/preload.cjs']]) fs.copyFileSync(from,to)\"",
+    "prebuild": "npm run build:preload && npm run build:electron",
+    "dev": "npm run prebuild && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build": "npm run prebuild && vite build && electron-builder",
+    "build:dir": "npm run prebuild && vite build && electron-builder --dir",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "concurrently": "^9.1.2",
+    "electron": "^37.10.3",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.paulmccafferty.everpath",
+    "productName": "Everpath",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": "nsis"
+    },
+    "mac": {
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "icon": "build/icon.png"
+    }
+  },
+  "allowScripts": {
+    "electron@37.10.3": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true
+  }
+}

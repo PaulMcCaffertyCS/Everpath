@@ -1,0 +1,158 @@
+body {
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  min-height: 76px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 2px solid #303542;
+  background: #151821;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 22px;
+}
+
+.topbar p,
+.muted {
+  color: #9298a7;
+  font-size: 12px;
+}
+
+.save-tools {
+  display: flex;
+  gap: 8px;
+}
+
+input {
+  width: 180px;
+  padding: 8px;
+  color: #eee;
+  background: #0d1016;
+  border: 1px solid #3a4050;
+}
+
+button {
+  padding: 8px 10px;
+  color: #f2ead5;
+  background: #2b3242;
+  border: 1px solid #505a70;
+}
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 0;
+}
+
+.panel {
+  padding: 18px;
+  border-right: 2px solid #303542;
+  background: #12151c;
+}
+
+.panel h2 {
+  margin-bottom: 4px;
+}
+
+.panel h3 {
+  margin: 0 0 10px;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 9px 0;
+}
+
+.bar {
+  height: 8px;
+  background: #282d38;
+  margin-top: 14px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  background: #6e9d6b;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #303542;
+  margin: 18px 0;
+}
+
+code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin: 5px 0 12px;
+  color: #c9b778;
+}
+
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  background: #090b10;
+}
+
+.game-canvas {
+  width: min(90vw, 1044px);
+  height: auto;
+  aspect-ratio: 696 / 456;
+  image-rendering: pixelated;
+  border: 3px solid #454b5b;
+  box-shadow:
+    0 0 0 3px #11151e,
+    0 12px 40px
+      rgba(0, 0, 0, 0.45);
+}
+
+.status {
+  color: #c9b778;
+  min-height: 18px;
+  font-size: 12px;
+}
+
+.help {
+  color: #6f7582;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    border-right: 0;
+    border-bottom: 2px solid #303542;
+  }
+
+  .save-tools {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
