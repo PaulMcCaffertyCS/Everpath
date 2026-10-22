@@ -15,9 +15,18 @@ function createNewGame(): GameState {
       level: 1,
       experience: 0,
       hp: 30,
-      maxHp: 30,
+      attack: {
+        strength: 1,
+        range: 1,
+        speed: 1,
+        type: "physical"
+      },
+      defense: {
+        physical: 0,
+        magical: 0
+      },
       mana: 0,
-      maxMana: 0,
+      movementSpeed: 6,
       position: new SimplePoint(12, 12),
       direction: "down",
       discoveredTownCount: 0,

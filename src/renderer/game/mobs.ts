@@ -11,9 +11,13 @@ const mobDefinitions: Record<MobSpecies, MobBase> = {
     attack: {
       strength: 2,
       range: 1,
-      speed: 1
+      speed: 1,
+      type: "physical"
     },
-    defense: 2,
+    defense: {
+      physical: 2,
+      magical: 0
+    },
     mana: 0,
     movementSpeed: 1,
     aggroRange: 6,
@@ -44,11 +48,15 @@ const mobDefinitions: Record<MobSpecies, MobBase> = {
     attack: {
       strength: 1,
       range: 1,
-      speed: 1
+      speed: 1,
+      type: "physical"
     },
-    defense: 1,
+    defense: {
+      physical: 1,
+      magical: 1
+    },
     mana: 1,
-    movementSpeed: 1.1,
+    movementSpeed: 0.6,
     aggroRange: 4,
     action: "idle",
     behavior: "wander",

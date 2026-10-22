@@ -1,5 +1,5 @@
-import SimplePoint from "../utils/typescript/SimplePoint";
-import { zipToRecord } from "../utils/typescript/TypeScript";
+import SimplePoint from "../utils/typescript/SimplePoint.js";
+import { zipToRecord } from "../utils/typescript/TypeScript.js";
 
 /**
  * Const Declarations
@@ -25,6 +25,21 @@ type CharacterClass = "alchemist" | "archer" | "assassin" | "farmer" | "herbalis
  */
 type Direction = "up" | "down" | "left" | "right";
 
+type AttackType = "magical" | "physical";
+
+type Attack = {
+  strength: number;
+  range: number;
+  speed: number;
+  type: AttackType;
+}
+
+type Defense = {
+  physical: number;
+  magical: number;
+}
+
+
 /**
  * Mob Typing
  */
@@ -45,12 +60,6 @@ type MobRelationship = "complicated" | "friendly" | "hostile";
 type TamingDifficulty = "sayhi" | "easy" | "moderate" | "hard" | "extreme" | "deathly";
 
 type TamingMethod = "fight" | "gifts" | "help" | "insult" | "taunt";
-
-type MobAttack = {
-  strength: number;
-  range: number;
-  speed: number;
-}
 
 type MobAI = {
   wanderDirection: SimplePoint;
@@ -90,9 +99,10 @@ interface Player {
   level: number;
   experience: number;
   hp: number;
-  maxHp: number;
+  attack: Attack;
+  defense: Defense;
   mana: number;
-  maxMana: number;
+  movementSpeed: number;
   position: SimplePoint;
   direction: Direction,
   discoveredTownCount: number;
@@ -107,8 +117,8 @@ interface MobBase {
   classes: MobClass[];
   level: number;
   hp: number;
-  attack: MobAttack;
-  defense: number;
+  attack: Attack;
+  defense: Defense;
   mana: number;
   movementSpeed: number;
   aggroRange: number;
@@ -209,8 +219,8 @@ export { biomes, biomeColors, biomeToColor };
 // Types
 export type {
   CharacterRace, CharacterRaceBeastmanVariant, CharacterRaceElfVariant, CharacterRaceUndeadVariant, CharacterClass,
-  Direction,
-  MobSpecies, MobGoblinVariant, MobClass, MobLanguage, MobBehavior, MobRelationship, TamingDifficulty, TamingMethod, MobAttack, MobSpawnRule,
+  Direction, AttackType, Attack,
+  MobSpecies, MobGoblinVariant, MobClass, MobLanguage, MobBehavior, MobRelationship, TamingDifficulty, TamingMethod, MobSpawnRule,
   BuildingType, ShopType,
   BiomeType
 };

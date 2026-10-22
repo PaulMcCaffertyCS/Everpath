@@ -90,7 +90,7 @@ class GameEngine {
   }
 
   update(deltaSeconds: number, keys: Set<string>) {
-    const speed = 4 * deltaSeconds;
+    const speed = this.state.player.movementSpeed * deltaSeconds;
     let dx = 0;
     let dy = 0;
 
@@ -147,8 +147,7 @@ class GameEngine {
     if (this.state.player.experience >= needed) {
       this.state.player.experience -= needed;
       this.state.player.level += 1;
-      this.state.player.maxHp += 3;
-      this.state.player.hp = this.state.player.maxHp;
+      this.state.player.hp += 3;
     }
   }
 
