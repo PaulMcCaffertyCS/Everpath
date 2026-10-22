@@ -1,4 +1,5 @@
-import type { Direction, GameState } from "../../shared/types";
+import type { GameState } from "../../shared/types";
+import SimplePoint from "../../utils/typescript/SimplePoint";
 
 function createNewGame(): GameState {
   const now = Date.now();
@@ -17,10 +18,7 @@ function createNewGame(): GameState {
       maxHp: 30,
       mana: 0,
       maxMana: 0,
-      position: {
-        x: 12,
-        y: 12
-      },
+      position: new SimplePoint(12, 12),
       direction: "down",
       discoveredTownCount: 0,
       skills: {
@@ -29,6 +27,7 @@ function createNewGame(): GameState {
         manaStudy: 0
       }
     },
+    mobs: [],
     world: {
       seed: Math.floor(Math.random() * 0xffffffff),
       chunkSize: 24,

@@ -1,6 +1,6 @@
 /**
  * Biome Typing
  */
-const biomes = ["forest", "hills", "lake", "meadow", "swamp", "ruins"];
+const biomes = ["forest", "hills", "lake", "meadow", "mountains", "swamp", "ruins"];
 // Values
 export { biomes };

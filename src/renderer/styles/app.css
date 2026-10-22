@@ -1,7 +1,50 @@
+/* ELEMENT STYLING */
 body {
   min-height: 100vh;
 }
 
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 22px;
+}
+
+input {
+  width: 180px;
+  padding: 8px;
+  color: #eee;
+  background: #0d1016;
+  border: 1px solid #3a4050;
+}
+
+button {
+  padding: 8px 10px;
+  color: #f2ead5;
+  background: #2b3242;
+  border: 1px solid #505a70;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #303542;
+  margin: 18px 0;
+}
+
+code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin: 5px 0 12px;
+  color: #c9b778;
+}
+
+
+
+/* CLASS STYLING */
 .app {
   min-height: 100vh;
   display: flex;
@@ -18,41 +61,19 @@ body {
   background: #151821;
 }
 
-h1,
-h2,
-h3,
-p {
-  margin: 0;
-}
-
-h1 {
-  font-size: 22px;
-}
-
 .topbar p,
 .muted {
   color: #9298a7;
   font-size: 12px;
 }
 
+.top-margin {
+  margin-top: 12px;
+}
+
 .save-tools {
   display: flex;
   gap: 8px;
-}
-
-input {
-  width: 180px;
-  padding: 8px;
-  color: #eee;
-  background: #0d1016;
-  border: 1px solid #3a4050;
-}
-
-button {
-  padding: 8px 10px;
-  color: #f2ead5;
-  background: #2b3242;
-  border: 1px solid #505a70;
 }
 
 .layout {
@@ -95,19 +116,6 @@ button {
   background: #6e9d6b;
 }
 
-hr {
-  border: 0;
-  border-top: 1px solid #303542;
-  margin: 18px 0;
-}
-
-code {
-  display: block;
-  overflow-wrap: anywhere;
-  margin: 5px 0 12px;
-  color: #c9b778;
-}
-
 .game-area {
   display: flex;
   flex-direction: column;
@@ -141,7 +149,7 @@ code {
   font-size: 11px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .layout {
     grid-template-columns: 1fr;
   }

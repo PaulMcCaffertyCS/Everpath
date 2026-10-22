@@ -3,7 +3,7 @@
   "name": "everpath",
   "description": "A code-first, generative 2D adventure game.",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "main": "dist-electron/main/main.js",
   "scripts": {

@@ -1,0 +1,1 @@
+Copyright (c) Paul McCafferty: All Rights Reserved.

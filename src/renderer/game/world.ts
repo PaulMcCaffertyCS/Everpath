@@ -1,10 +1,46 @@
 import { hashString, mulberry32 } from "./seed";
+import { mobDefinitions } from "./mobs";
 import { biomes } from "../../shared/types";
-import type { BiomeType, Chunk, GameState, Encounter, Town } from "../../shared/types";
+import type { Mob, MobSpawnRule, BiomeType, Chunk, GameState, Encounter, Town } from "../../shared/types";
+import { randomInt } from "../../utils/MathUtils";
 import { capitalize } from "../../utils/StringUtils";
+import SimplePoint from "../../utils/typescript/SimplePoint";
 
 const TILE_SIZE = 24;
 const CHUNK_TILES = 24;
+
+const mobSpawnRules: Record<BiomeType, MobSpawnRule[]> = {
+  forest: [
+    {
+      speciesId: "goblin",
+      weight: 3,
+      maxPerChunk: 3
+    },
+    {
+      speciesId: "slime",
+      weight: 5,
+      maxPerChunk: 4
+    }
+  ],
+  hills: [],
+  lake: [],
+  meadow: [
+    {
+      speciesId: "slime",
+      weight: 3,
+      maxPerChunk: 2
+    }
+  ],
+  mountains: [],
+  swamp: [
+    {
+      speciesId: "slime",
+      weight: 8,
+      maxPerChunk: 5
+    }
+  ],
+  ruins: []
+};
 
 function chunkKey(cx: number, cy: number): string {
   return `${cx},${cy}`;
@@ -16,7 +52,7 @@ function difficultyForChunk(state: GameState, cx: number, cy: number): number {
   return Math.max(1, state.player.level + progression);
 }
 
-function townName(rng: () => number,generationIndex: number): string {
+function townName(rng: () => number, generationIndex: number): string {
   const beginnings = [
     "Ash",
     "Elder",
@@ -47,6 +83,80 @@ function townName(rng: () => number,generationIndex: number): string {
   const ending = endings[Math.floor(rng() * endings.length)];
 
   return generationIndex === 1 ? `${beginning}${ending}` : `${capitalize(ending)}${beginning.toLowerCase()}`;
+}
+
+function generateMobs(
+  key: string,
+  cx: number,
+  cy: number,
+  biome: BiomeType,
+  tiles: number[],
+  rng: () => number
+): Mob[] {
+  const rules = mobSpawnRules[biome] ?? [];
+
+  if (rules.length === 0) {
+    return [];
+  }
+
+  const maxMobs = randomInt(rng, 2, 6);
+  const counts: Record<string, number> = {};
+  const mobs: Mob[] = [];
+
+  // Only spawn on ordinary ground tiles.
+  const validTiles = tiles
+    .map((tile, index) => ({ tile, index }))
+    .filter(({ tile }) => tile === 0)
+    .map(({ index }) => index);
+
+  if (validTiles.length === 0) {
+    return [];
+  }
+
+  for (let i = 0; i < maxMobs; i++) {
+    const eligibleRules = rules.filter(rule => (counts[rule.speciesId] ?? 0) < rule.maxPerChunk);
+    if (eligibleRules.length === 0) {
+      break;
+    }
+
+    const totalWeight = eligibleRules.reduce((sum, rule) => sum + rule.weight, 0);
+    let roll = rng() * totalWeight;
+
+    const selectedRule = eligibleRules.find(rule => {
+      roll -= rule.weight;
+      return roll < 0;
+    }) ?? eligibleRules[eligibleRules.length - 1];
+
+    const definition = mobDefinitions[selectedRule.speciesId];
+    if (!definition) {
+      continue;
+    }
+
+    const tileIndex = randomInt(rng, 0, validTiles.length - 1);
+    const spawnIndex = validTiles.splice(tileIndex, 1)[0];
+    const x = spawnIndex % CHUNK_TILES;
+    const y = Math.floor(spawnIndex / CHUNK_TILES);
+
+    const mob: Mob = {
+      id: `${key}-mob-${i}`,
+      base: mobDefinitions[selectedRule.speciesId],
+      name: `${key}-mob-${i}`,
+      // World position, not chunk-local position.
+      position: new SimplePoint(cx * CHUNK_TILES + x, cy * CHUNK_TILES + y),
+      direction: "down",
+
+      interactions: {
+        taming: {
+          isTamed: false
+        }
+      }
+    };
+
+    mobs.push(mob);
+    counts[definition.species] = (counts[definition.species] ?? 0) + 1;
+  }
+
+  return mobs;
 }
 
 function generateChunk(state: GameState, cx: number, cy: number): Chunk {
@@ -100,6 +210,8 @@ function generateChunk(state: GameState, cx: number, cy: number): Chunk {
     });
   }
 
+  const mobs = generateMobs(key, cx, cy, biome, tiles, rng);
+
   return {
     key,
     cx,
@@ -108,7 +220,8 @@ function generateChunk(state: GameState, cx: number, cy: number): Chunk {
     difficulty,
     tiles,
     towns,
-    encounters
+    encounters,
+    mobs
   };
 }
 

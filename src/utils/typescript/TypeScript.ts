@@ -4,4 +4,12 @@ type UnionToTupleLast<U> = UnionToIntersection<U extends any ? (x: U) => void : 
 
 type UnionToTuple<U, Last = UnionToTupleLast<U>> = [U] extends [never] ? [] : [...UnionToTuple<Exclude<U, Last>>, Last];
 
+function zipToRecord<K extends string | number | symbol, V>(keys: readonly K[], values: readonly V[]): Record<K, V> {
+  return keys.reduce((record, key, index) => {
+    record[key] = values[index];
+    return record;
+  }, {} as Record<K, V>);
+}
+
 export type { UnionToTuple };
+export { zipToRecord };

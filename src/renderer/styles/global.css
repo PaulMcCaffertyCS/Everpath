@@ -2,9 +2,11 @@
   box-sizing: border-box;
 }
 
+
+
+/* ELEMENT STYLING */
 html,
-body,
-#root {
+body {
   margin: 0;
   width: 100%;
   min-height: 100%;
@@ -29,4 +31,13 @@ input {
 
 button {
   cursor: pointer;
+}
+
+
+
+/* ID STYLING */
+#root {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
 }

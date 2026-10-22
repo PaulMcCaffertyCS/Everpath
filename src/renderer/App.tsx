@@ -4,12 +4,13 @@ import GameEngine from "./game/engine";
 import { createNewGame } from "./game/state";
 import { decryptSave, encryptSave } from "./game/save";
 import "./styles/app.css";
+import { CHUNK_TILES } from "./game/world";
 
 export default function App() {
   const [engine] = useState(() => new GameEngine(createNewGame()));
   const [, forceRender] = useState(0);
   const [status, setStatus] = useState("New adventure");
-  const [ password, setPassword] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     const renderInterval = window.setInterval(() => {
@@ -54,6 +55,10 @@ export default function App() {
     } catch {
       setStatus("Could not decrypt that save.");
     }
+  }
+
+  function getName() {
+    return "hi"
   }
 
   return (
@@ -167,12 +172,26 @@ export default function App() {
           </div>
 
           <strong>
-            {
-              Object.keys(
-                state.world
-                  .discovered
-              ).length
-            }
+            {Object.keys(state.world.discovered).length}
+          </strong>
+
+          <div className="muted top-margin">
+            Chunk biome
+          </div>
+
+          <strong>
+            {function () {
+              const playerPosition = state.player.position;
+              const cx = Math.floor(playerPosition.x / CHUNK_TILES);
+              const cy = Math.floor((playerPosition.y + 0.75) / CHUNK_TILES);
+              const chunk = state.world.discovered[`${cx},${cy}`];
+              if (!chunk) {
+                setStatus(`chunk [${cx},${cy}] does not exist`);
+                return "ERROR";
+              }
+
+              return chunk.biome;
+            }()}
           </strong>
         </aside>
 
