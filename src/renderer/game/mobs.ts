@@ -1,8 +1,46 @@
 import type { MobSpecies, MobBase, Mob, Player } from "../../shared/types";
-import SimplePoint from "../../utils/typescript/SimplePoint";
 import { generateUuid } from "../../utils/UuidUtils";
 
 const mobDefinitions: Record<MobSpecies, MobBase> = {
+  dragon: {
+    species: "dragon",
+    classes: ["warrior"],
+    level: 5,
+    hp: 50,
+    attack: {
+      strength: 10,
+      range: 8,
+      speed: 1,
+      type: "physical"
+    },
+    defense: {
+      physical: 10,
+      magical: 10
+    },
+    mana: 10,
+    movementSpeed: 3,
+    aggroRange: 8,
+    action: "idle",
+    behavior: "wander",
+
+    interactions: {
+      relationship: "hostile",
+      communication: {
+        available: true,
+        language: "dragonese"
+      },
+      taming: {
+        available: true,
+        difficulty: "deathly",
+        method: "fight"
+      },
+    },
+
+    rendering: {
+      width: 40,
+      height: 34
+    }
+  },
   goblin: {
     species: "goblin",
     classes: ["warrior"],
@@ -56,7 +94,7 @@ const mobDefinitions: Record<MobSpecies, MobBase> = {
       magical: 1
     },
     mana: 1,
-    movementSpeed: 0.6,
+    movementSpeed: 1.1,
     aggroRange: 4,
     action: "idle",
     behavior: "wander",

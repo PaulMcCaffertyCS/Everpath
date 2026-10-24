@@ -36,17 +36,7 @@ class GameEngine {
         const tile = chunk.tiles[localY * CHUNK_TILES + localX];
 
         // context.fillStyle = this.biomeColorAt(new SimplePoint(x + 0.5, y + 0.5), "#000000").value;
-
-        switch (chunk.biome) {
-          case "forest": context.fillStyle = "#24452f"; break;
-          case "hills": context.fillStyle = "#4a4630"; break;
-          case "lake": context.fillStyle = "#02678f"; break;
-          case "meadow": context.fillStyle = "#38533a"; break;
-          case "mountains": context.fillStyle = "#83807e"; break;
-          case "ruins": context.fillStyle = "#353338"; break;
-          case "swamp": context.fillStyle = "#293c36"; break;
-          default: context.fillStyle = "#000000";
-        }
+        context.fillStyle = biomeToColor[chunk.biome];
 
         context.fillRect(
           centerX + (x - player.position.x) * TILE_SIZE,
@@ -122,16 +112,14 @@ class GameEngine {
     const player = this.state.player;
 
     const nextX = player.position.x + dx;
-    // if (this.canPlayerMoveToTile(nextX, player.position.y)) {
-    // if (this.doesTileAllowMovement(nextX, player.position.y)) {
+    if (this.canPlayerMoveToTile(nextX, player.position.y, PLAYER_RADIUS)) {
       player.position.x = nextX;
-    // }
+    }
 
     const nextY = player.position.y + dy;
-    // if (this.canPlayerMoveToTile(nextY, player.position.y)) {
-    // if (this.doesTileAllowMovement(nextY, player.position.y)) {
+    if (this.canPlayerMoveToTile(player.position.x, nextY, PLAYER_RADIUS)) {
       player.position.y = nextY;
-    // }
+    }
 
     this.state.updatedAt = Date.now();
     ensureAroundPlayer(this.state);
@@ -219,6 +207,21 @@ class GameEngine {
       26,
       32
     );
+
+    // Debug hitbox: circle in world coordinates, converted to pixels.
+    context.save();
+    context.beginPath();
+    context.arc(
+      centerX + (this.state.player.position.x - this.state.player.position.x) * TILE_SIZE,
+      centerY + (this.state.player.position.y - this.state.player.position.y) * TILE_SIZE,
+      PLAYER_RADIUS * TILE_SIZE,
+      0,
+      Math.PI * 2
+    );
+    context.strokeStyle = "red";
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
   }
 
   private renderMob(context: CanvasRenderingContext2D, mob: Mob, centerX: number, centerY: number, sprites: GameSprites) {
@@ -234,13 +237,40 @@ class GameEngine {
     const drawWidth = mob.base.rendering.width;
     const drawHeight = mob.base.rendering.height;
 
+    context.strokeText(
+      mob.base.movementSpeed.toPrecision(4).toString(),
+      screenX + (TILE_SIZE - drawWidth) / 2,
+      (screenY + TILE_SIZE - drawHeight) - (drawHeight + 10)
+    );
+
+    context.strokeText(
+      mob.base.action,
+      screenX + (TILE_SIZE - drawWidth) / 2,
+      (screenY + TILE_SIZE - drawHeight) - (drawHeight)
+    );
+
     context.drawImage(
       sprite,
       screenX + (TILE_SIZE - drawWidth) / 2,
       screenY + TILE_SIZE - drawHeight,
       drawWidth,
       drawHeight
-    )
+    );
+
+    // Debug hitbox: circle in world coordinates, converted to pixels.
+    context.save();
+    context.beginPath();
+    context.arc(
+      centerX + (mob.position.x - player.position.x) * TILE_SIZE,
+      centerY + (mob.position.y - player.position.y) * TILE_SIZE,
+      MOB_RADIUS * TILE_SIZE,
+      0,
+      Math.PI * 2
+    );
+    context.strokeStyle = "red";
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
   }
 
   private updateMobs(deltaSeconds: number) {
@@ -276,7 +306,13 @@ class GameEngine {
         switch (mob.base.behavior) {
           case "wander": this.updateWander(mob, deltaSeconds); break;
           case "patrol": mob.base.action = "idle"; break;
-          case "idiot":
+          case "idiot": {
+            const newMovementSpeed = 0 + Math.random() * 4;
+            // console.log(`newMovementSpeed=${newMovementSpeed}`);
+            mob.base.movementSpeed = newMovementSpeed;
+            this.updateWander(mob, deltaSeconds);
+            break;
+          }
           default: mob.base.action = "idle"; break;
         }
       }
@@ -284,13 +320,13 @@ class GameEngine {
   }
 
   private updateWander(mob: Mob, deltaSeconds: number) {
-    mob.base.ai ??= {
+    mob.ai ??= {
       wanderDirection: new SimplePoint(0, 0),
       wanderTimeRemaining: 0,
       pauseTimeRemaining: 0
     }
 
-    const ai = mob.base.ai;
+    const ai = mob.ai;
 
     if (ai.pauseTimeRemaining > 0) {
       ai.pauseTimeRemaining = Math.max(0, ai.pauseTimeRemaining - deltaSeconds);
@@ -308,7 +344,7 @@ class GameEngine {
 
       ai.wanderDirection = directions[Math.floor(Math.random() * directions.length)];
       ai.wanderTimeRemaining = 2.2 + Math.random() * 3.0; // Move 2.2-5.2 seconds
-      
+
       // Usually move, occasionally take a break
       if (Math.random() < 0.3) {
         ai.pauseTimeRemaining = 1.5 + Math.random() * 5.3; // Break lasts 1.5-6.8 seconds
@@ -334,15 +370,15 @@ class GameEngine {
   }
 
   private moveMob(mob: Mob, dPoint: SimplePoint) {
+    const radius = MOB_RADIUS;
+
     const nextX = mob.position.x + dPoint.x;
-    // if (this.canMobMoveToTile(mob, nextX, mob.position.y)) {
-    if (this.doesTileAllowMovement(nextX, mob.position.y)) {
+    if (this.canMobMoveToTile(mob, nextX, mob.position.y, radius)) {
       mob.position.x = nextX;
     }
 
     const nextY = mob.position.y + dPoint.y;
-    // if (this.canMobMoveToTile(mob, mob.position.x, nextY)) {
-    if (this.doesTileAllowMovement(mob.position.x, nextY)) {
+    if (this.canMobMoveToTile(mob, mob.position.x, nextY, radius)) {
       mob.position.y = nextY;
     }
 
@@ -355,17 +391,15 @@ class GameEngine {
     }
   }
 
-  private canPlayerMoveToTile(x: number, y: number): boolean {
-    // if (!this.doesTerrainTileAllowMovement(x, y, PLAYER_RADIUS)) {
-    if (!this.doesTileAllowMovement(x, y)) {
+  private canPlayerMoveToTile(x: number, y: number, radius: number): boolean {
+    if (!this.isTerrainTileClear(x, y, radius)) {
       return false;
     }
 
     for (const chunk of Object.values(this.state.world.discovered)) {
       for (const mob of chunk.mobs) {
-        const minDistance = PLAYER_RADIUS + MOB_RADIUS;
         const distance = Math.hypot(x - mob.position.x, y - mob.position.y);
-        if (distance < minDistance) {
+        if (distance < PLAYER_RADIUS + MOB_RADIUS) {
           return false;
         }
       }
@@ -374,15 +408,14 @@ class GameEngine {
     return true;
   }
 
-  private canMobMoveToTile(mob: Mob, x: number, y: number): boolean {
-    // if (!this.doesTerrainTileAllowMovement(x, y, MOB_RADIUS)) {
-    if (!this.doesTileAllowMovement(x, y)) {
+  private canMobMoveToTile(mob: Mob, x: number, y: number, radius: number): boolean {
+    if (!this.isTerrainTileClear(x, y, radius)) {
       return false;
     }
 
     const player = this.state.player;
     const playerDistance = Math.hypot(x - player.position.x, y - player.position.y);
-    if (playerDistance < MOB_RADIUS + PLAYER_RADIUS) {
+    if (playerDistance < radius + PLAYER_RADIUS) {
       return false;
     }
 
@@ -392,8 +425,8 @@ class GameEngine {
           continue;
         }
 
-        const distance = Math.hypot(x = otherMob.position.x, y - otherMob.position.y);
-        if (distance < MOB_RADIUS * 2) {
+        const distance = Math.hypot(x - otherMob.position.x, y - otherMob.position.y);
+        if (distance < radius + MOB_RADIUS) {
           return false;
         }
       }
@@ -402,18 +435,29 @@ class GameEngine {
     return true;
   }
 
-  private doesTerrainTileAllowMovement(x: number, y: number, radius: number): boolean {
-    const samples = [
-      [0, 0],
-      [-radius, 0],
-      [radius, 0],
-      [0, -radius],
-      [0, radius]
-    ];
+  private isTerrainTileClear(x: number, y: number, radius: number): boolean {
+    const minTile = new SimplePoint(Math.floor(x - radius), Math.floor(y - radius));
+    const maxTile = new SimplePoint(Math.floor(x + radius), Math.floor(y + radius));
 
-    return samples.every(([offsetX, offsetY]) => {
-      return this.doesTileAllowMovement(x + offsetX, y + offsetY);
-    });
+    for (let tileY = minTile.y; tileY <= maxTile.y; tileY++) {
+      for (let tileX = minTile.x; tileX <= maxTile.x; tileX++) {
+        if (!this.doesTileAllowMovement(tileX + 0.5, tileY + 0.5)) {
+          const closestTile = new SimplePoint(
+            Math.max(tileX, Math.min(x, tileX + 1)),
+            Math.max(tileY, Math.min(y, tileY + 1))
+          )
+
+          const dPoint = new SimplePoint(x, y).minus(closestTile);
+
+          if (dPoint.x * dPoint.x + dPoint.y * dPoint.y < radius * radius) {
+            // console.log(`dPoint=${(dPoint.x, dPoint.y)}`);
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
   }
 
   private doesTileAllowMovement(x: number, y: number): boolean {

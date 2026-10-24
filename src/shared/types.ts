@@ -43,13 +43,15 @@ type Defense = {
 /**
  * Mob Typing
  */
-type MobSpecies = "goblin" | "slime";
+type MobSpecies = "dragon" | "goblin" | "slime";
+
+type MobDragonVariant = "fire" | "ice";
 
 type MobGoblinVariant = "grunt" | "king" | "queen";
 
 type MobClass = "archer" | "gatherer" | "hunter" | "warrior";
 
-type MobLanguage = "goblinese";
+type MobLanguage = "dragonese" | "goblinese";
 
 type MobAction = "attacking" | "chasing" | "idle" | "patrolling" | "wandering";
 
@@ -83,10 +85,10 @@ type ShopType = "alchemy" | "dark" | "farm" | "forge" | "general" | "herbal" | "
 /**
  * Biome Typing
  */
-const biomes = ["forest", "hills", "lake", "meadow", "mountains", "ruins", "swamp"] as const;
+const biomes = ["astridland", "forest", "hills", "lake", "meadow", "mountains", "ruins", "swamp"] as const;
 type BiomeType = typeof biomes[number];
 
-const biomeColors = ["#24452f", "#4a4630", "#02678f", "#38533a", "#83807e", "#353338", "#293c36"] as const;
+const biomeColors = ["#925ba8", "#24452f", "#4a4630", "#02678f", "#38533a", "#83807e", "#353338", "#293c36"] as const;
 type BiomeColor = typeof biomeColors[number];
 
 const biomeToColor: Record<BiomeType, BiomeColor> = zipToRecord(biomes, biomeColors);
@@ -124,7 +126,6 @@ interface MobBase {
   aggroRange: number;
   action: MobAction;
   behavior: MobBehavior;
-  ai?: MobAI;
 
   interactions: {
     relationship: MobRelationship;
@@ -151,6 +152,7 @@ interface Mob {
   name: string;
   position: SimplePoint;
   direction: Direction;
+  ai?: MobAI;
   
   interactions: {
     taming: {
@@ -220,7 +222,7 @@ export { biomes, biomeColors, biomeToColor };
 export type {
   CharacterRace, CharacterRaceBeastmanVariant, CharacterRaceElfVariant, CharacterRaceUndeadVariant, CharacterClass,
   Direction, AttackType, Attack,
-  MobSpecies, MobGoblinVariant, MobClass, MobLanguage, MobBehavior, MobRelationship, TamingDifficulty, TamingMethod, MobSpawnRule,
+  MobSpecies, MobDragonVariant, MobGoblinVariant, MobClass, MobLanguage, MobBehavior, MobRelationship, TamingDifficulty, TamingMethod, MobSpawnRule,
   BuildingType, ShopType,
   BiomeType
 };

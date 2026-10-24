@@ -10,6 +10,13 @@ const TILE_SIZE = 24;
 const CHUNK_TILES = 24;
 
 const mobSpawnRules: Record<BiomeType, MobSpawnRule[]> = {
+  astridland: [
+    {
+      speciesId: "dragon",
+      weight: 10,
+      maxPerChunk: 3
+    }
+  ],
   forest: [
     {
       speciesId: "goblin",
@@ -139,7 +146,7 @@ function generateMobs(
 
     const mob: Mob = {
       id: `${key}-mob-${i}`,
-      base: mobDefinitions[selectedRule.speciesId],
+      base: structuredClone(mobDefinitions[selectedRule.speciesId]),
       name: `${key}-mob-${i}`,
       // World position, not chunk-local position.
       position: new SimplePoint(cx * CHUNK_TILES + x, cy * CHUNK_TILES + y),
@@ -151,6 +158,8 @@ function generateMobs(
         }
       }
     };
+    // To create random, mob.base.${value} needs updated here
+    // mob.base.movementSpeed = 1.1 + Math.random() * 3;
 
     mobs.push(mob);
     counts[definition.species] = (counts[definition.species] ?? 0) + 1;
