@@ -1,20 +1,21 @@
 import SimplePoint from "../utils/typescript/SimplePoint.js";
+import SimpleShape from "../utils/typescript/SimpleShape.js";
 import SimpleSize from "../utils/typescript/SimpleSize.js";
 import { zipToRecord } from "../utils/typescript/TypeScript.js";
 /**
  * Const Declarations
  */
 const PLAYER_SIZE = new SimpleSize(26, 32);
-const PLAYER_HITBOX = "rectangle";
+const PLAYER_HITBOX = new SimpleShape("rectangle");
 const MOB_SIZES = {
     "dragon": new SimpleSize(40, 34),
     "goblin": new SimpleSize(26, 32),
     "slime": new SimpleSize(24, 22)
 };
 const MOB_HITBOXES = {
-    "dragon": "rectangle",
-    "goblin": "rectangle",
-    "slime": "circle"
+    "dragon": new SimpleShape("rectangle"),
+    "goblin": new SimpleShape("rectangle"),
+    "slime": new SimpleShape("circle")
 };
 const PLAYER_RADIUS = 0.3;
 const MOB_RADIUS = 0.28;
