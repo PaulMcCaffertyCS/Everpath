@@ -1,9 +1,25 @@
 import SimplePoint from "../utils/typescript/SimplePoint.js";
+import SimpleShape from "../utils/typescript/SimpleShape.js";
+import SimpleSize from "../utils/typescript/SimpleSize.js";
+import type TileCircle from "../utils/typescript/TileCircle.js";
+import type TileRect from "../utils/typescript/TileRect.js";
 import { zipToRecord } from "../utils/typescript/TypeScript.js";
 
 /**
  * Const Declarations
  */
+const PLAYER_SIZE = new SimpleSize(26, 32);
+const PLAYER_HITBOX: SimpleShape = new SimpleShape("rectangle");
+const MOB_SIZES: Record<MobSpecies, SimpleSize> = {
+  "dragon": new SimpleSize(40, 34),
+  "goblin": new SimpleSize(26, 32),
+  "slime": new SimpleSize(24, 22)
+};
+const MOB_HITBOXES: Record<MobSpecies, SimpleShape> = {
+  "dragon": new SimpleShape("rectangle"),
+  "goblin": new SimpleShape("rectangle"),
+  "slime": new SimpleShape("circle")
+}
 const PLAYER_RADIUS = 0.3;
 const MOB_RADIUS = 0.28;
 
@@ -109,6 +125,10 @@ interface Player {
   direction: Direction,
   discoveredTownCount: number;
   skills: Record<string, number>;
+  rendering: {
+    size: SimpleSize;
+    hitbox: TileCircle | TileRect;
+  }
 }
 
 /**
@@ -141,9 +161,9 @@ interface MobBase {
   };
 
   rendering: {
-    width: number;
-    height: number;
-  }
+    size: SimpleSize;
+    hitbox: TileCircle | TileRect;
+  };
 }
 
 interface Mob {
@@ -213,7 +233,7 @@ interface GameState {
 }
 
 // Consts
-export { PLAYER_RADIUS, MOB_RADIUS };
+export { PLAYER_SIZE, PLAYER_HITBOX, MOB_SIZES, MOB_HITBOXES, PLAYER_RADIUS, MOB_RADIUS };
 
 // Values
 export { biomes, biomeColors, biomeToColor };

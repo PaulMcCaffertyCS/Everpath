@@ -1,5 +1,7 @@
+import { PLAYER_SIZE } from "../../shared/types";
 import type { GameState } from "../../shared/types";
 import SimplePoint from "../../utils/typescript/SimplePoint";
+import TileRect from "../../utils/typescript/TileRect";
 
 function createNewGame(): GameState {
   const now = Date.now();
@@ -34,6 +36,10 @@ function createNewGame(): GameState {
         swordsmanship: 1,
         exploration: 1,
         manaStudy: 0
+      },
+      rendering: {
+        size: PLAYER_SIZE,
+        hitbox: TileRect.fromPointAndSize(new SimplePoint(0, 0), PLAYER_SIZE)
       }
     },
     mobs: [],

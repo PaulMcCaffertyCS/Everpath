@@ -7,48 +7,61 @@ class SimplePoint {
     this.y = y;
   }
 
-  plusValue(value: number): SimplePoint {
-    return new SimplePoint(this.x + value, this.y + value);
+  plusValue(value: number) {
+    this.x += value;
+    this.y += value;
   }
 
-  plus(other: SimplePoint): SimplePoint {
-    return new SimplePoint(this.x + other.x, this.y + other.y)
+  plus(other: SimplePoint) {
+    this.x += other.x;
+    this.y += other.y;
   }
 
-  minusValue(value: number): SimplePoint {
-    return new SimplePoint(this.x - value, this.y - value);
+  minusValue(value: number) {
+    this.x -= value;
+    this.y -= value;
   }
 
-  minus(other: SimplePoint): SimplePoint {
-    return new SimplePoint(this.x - other.x, this.y - other.y);
+  minus(other: SimplePoint) {
+    this.x -= other.x;
+    this.y -= other.y;
   }
 
-  multiplyValue(value: number): SimplePoint {
-    return new SimplePoint(this.x * value, this.y * value);
+  multiplyValue(value: number) {
+    this.x *= value;
+    this.y *= value;
   }
 
-  multiply(other: SimplePoint): SimplePoint {
-    return new SimplePoint(this.x * other.x, this.y * other.y);
+  multiply(other: SimplePoint) {
+    this.x *= other.x;
+    this.y *= other.y;
   }
 
-  divideValue(value: number): SimplePoint {
-    return new SimplePoint(this.x / value, this.y / value);
+  divideValue(value: number) {
+    this.x /= value;
+    this.y /= value;
   }
 
-  divide(other: SimplePoint): SimplePoint {
-    return new SimplePoint(this.x / other.x, this.y / other.y);
+  divide(other: SimplePoint) {
+    this.x /= other.x;
+    this.y /= other.y;
   }
 
   equals(other: SimplePoint): boolean {
     return this.x === other.x && this.y === other.y;
   }
 
-  shiftX(value: number): SimplePoint {
-    return new SimplePoint(this.x + value, this.y);
+  shiftX(value: number) {
+    this.x += value;
   }
 
-  shiftY(value: number): SimplePoint {
-    return new SimplePoint(this.x, this.y + value);
+  shiftY(value: number) {
+    this.y += value;
+  }
+
+  shiftXY(valueX: number, valueY: number) {
+    this.x += valueX;
+    this.y += valueY;
   }
 
   copy(x: number = this.x, y: number = this.y): SimplePoint {

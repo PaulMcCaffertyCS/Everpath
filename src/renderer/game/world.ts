@@ -1,13 +1,13 @@
-import { hashString, mulberry32 } from "./seed";
-import { mobDefinitions } from "./mobs";
-import { biomes } from "../../shared/types";
-import type { Mob, MobSpawnRule, BiomeType, Chunk, GameState, Encounter, Town } from "../../shared/types";
-import { randomInt } from "../../utils/MathUtils";
-import { capitalize } from "../../utils/StringUtils";
-import SimplePoint from "../../utils/typescript/SimplePoint";
-
-const TILE_SIZE = 24;
-const CHUNK_TILES = 24;
+import { hashString, mulberry32 } from "./seed.js";
+import { mobDefinitions } from "./mobs.js";
+import { TILE_SIZE, CHUNK_TILES } from "../../shared/declarations.js";
+import { biomes, MOB_HITBOXES } from "../../shared/types.js";
+import type { Mob, MobSpawnRule, BiomeType, Chunk, GameState, Encounter, Town } from "../../shared/types.js";
+import { randomInt } from "../../utils/MathUtils.js";
+import { capitalize } from "../../utils/StringUtils.js";
+import SimplePoint from "../../utils/typescript/SimplePoint.js";
+import TileRect from "../../utils/typescript/TileRect.js";
+import TileCircle from "../../utils/typescript/TileCircle.js";
 
 const mobSpawnRules: Record<BiomeType, MobSpawnRule[]> = {
   astridland: [
@@ -92,82 +92,6 @@ function townName(rng: () => number, generationIndex: number): string {
   return generationIndex === 1 ? `${beginning}${ending}` : `${capitalize(ending)}${beginning.toLowerCase()}`;
 }
 
-function generateMobs(
-  key: string,
-  cx: number,
-  cy: number,
-  biome: BiomeType,
-  tiles: number[],
-  rng: () => number
-): Mob[] {
-  const rules = mobSpawnRules[biome] ?? [];
-
-  if (rules.length === 0) {
-    return [];
-  }
-
-  const maxMobs = randomInt(rng, 2, 6);
-  const counts: Record<string, number> = {};
-  const mobs: Mob[] = [];
-
-  // Only spawn on ordinary ground tiles.
-  const validTiles = tiles
-    .map((tile, index) => ({ tile, index }))
-    .filter(({ tile }) => tile === 0)
-    .map(({ index }) => index);
-
-  if (validTiles.length === 0) {
-    return [];
-  }
-
-  for (let i = 0; i < maxMobs; i++) {
-    const eligibleRules = rules.filter(rule => (counts[rule.speciesId] ?? 0) < rule.maxPerChunk);
-    if (eligibleRules.length === 0) {
-      break;
-    }
-
-    const totalWeight = eligibleRules.reduce((sum, rule) => sum + rule.weight, 0);
-    let roll = rng() * totalWeight;
-
-    const selectedRule = eligibleRules.find(rule => {
-      roll -= rule.weight;
-      return roll < 0;
-    }) ?? eligibleRules[eligibleRules.length - 1];
-
-    const definition = mobDefinitions[selectedRule.speciesId];
-    if (!definition) {
-      continue;
-    }
-
-    const tileIndex = randomInt(rng, 0, validTiles.length - 1);
-    const spawnIndex = validTiles.splice(tileIndex, 1)[0];
-    const x = spawnIndex % CHUNK_TILES;
-    const y = Math.floor(spawnIndex / CHUNK_TILES);
-
-    const mob: Mob = {
-      id: `${key}-mob-${i}`,
-      base: structuredClone(mobDefinitions[selectedRule.speciesId]),
-      name: `${key}-mob-${i}`,
-      // World position, not chunk-local position.
-      position: new SimplePoint(cx * CHUNK_TILES + x, cy * CHUNK_TILES + y),
-      direction: "down",
-
-      interactions: {
-        taming: {
-          isTamed: false
-        }
-      }
-    };
-    // To create random, mob.base.${value} needs updated here
-    // mob.base.movementSpeed = 1.1 + Math.random() * 3;
-
-    mobs.push(mob);
-    counts[definition.species] = (counts[definition.species] ?? 0) + 1;
-  }
-
-  return mobs;
-}
-
 function generateChunk(state: GameState, cx: number, cy: number): Chunk {
   const key = chunkKey(cx, cy);
   const rng = mulberry32(
@@ -183,10 +107,10 @@ function generateChunk(state: GameState, cx: number, cy: number): Chunk {
   const difficulty = difficultyForChunk(state, cx, cy);
   const tiles: number[] = [];
 
-  for (let i = 0; i < CHUNK_TILES * CHUNK_TILES; i++) {
-    const noise = rng();
-    tiles.push(noise < 0.08 ? 1 : noise < 0.12 ? 2 : 0);
-  }
+  // for (let i = 0; i < CHUNK_TILES * CHUNK_TILES; i++) {
+  //   const noise = rng();
+  //   tiles.push(noise < 0.08 ? 1 : noise < 0.12 ? 2 : 0);
+  // }
 
   const towns: Town[] = [];
 
@@ -234,6 +158,88 @@ function generateChunk(state: GameState, cx: number, cy: number): Chunk {
   };
 }
 
+function generateMobs(
+  key: string,
+  cx: number,
+  cy: number,
+  biome: BiomeType,
+  tiles: number[],
+  rng: () => number
+): Mob[] {
+  const rules = mobSpawnRules[biome] ?? [];
+
+  if (rules.length === 0) {
+    return [];
+  }
+
+  const maxMobs = randomInt(rng, 2, 6);
+  const counts: Record<string, number> = {};
+  const mobs: Mob[] = [];
+
+  // Only spawn on ordinary ground tiles.
+  const validTiles = tiles.length === 0
+    ? Array.from({ length: TILE_SIZE * CHUNK_TILES }, (_, index) => index)
+    : tiles
+      .map((tile, index) => ({ tile, index }))
+      .filter(({ tile }) => tile === 0)
+      .map(({ index }) => index);
+
+  if (validTiles.length === 0) {
+    return [];
+  }
+
+  for (let i = 0; i < maxMobs; i++) {
+    const eligibleRules = rules.filter(rule => (counts[rule.speciesId] ?? 0) < rule.maxPerChunk);
+    if (eligibleRules.length === 0) {
+      break;
+    }
+
+    const totalWeight = eligibleRules.reduce((sum, rule) => sum + rule.weight, 0);
+    let roll = rng() * totalWeight;
+
+    const selectedRule = eligibleRules.find(rule => {
+      roll -= rule.weight;
+      return roll < 0;
+    }) ?? eligibleRules[eligibleRules.length - 1];
+
+    const definition = mobDefinitions[selectedRule.speciesId];
+    if (!definition) {
+      continue;
+    }
+
+    const tileIndex = randomInt(rng, 0, validTiles.length - 1);
+    const spawnIndex = validTiles.splice(tileIndex, 1)[0];
+    const x = spawnIndex % CHUNK_TILES;
+    const y = Math.floor(spawnIndex / CHUNK_TILES);
+
+    const mob: Mob = {
+      id: `${key}-mob-${i}`,
+      base: structuredClone(mobDefinitions[selectedRule.speciesId]),
+      name: `${key}-mob-${i}`,
+      // World position, not chunk-local position.
+      position: new SimplePoint(cx * CHUNK_TILES + x, cy * CHUNK_TILES + y),
+      direction: "down",
+
+      interactions: {
+        taming: {
+          isTamed: false
+        }
+      }
+    };
+    // To create random, mob.base.${value} needs updated here
+    // mob.base.movementSpeed = 1.1 + Math.random() * 3;
+
+    mob.base.rendering.hitbox = MOB_HITBOXES[mob.base.species].isBox() ?
+      TileRect.fromPointAndSize(mob.position, mob.base.rendering.size) :
+      TileCircle.fromPointAndSize(mob.position, mob.base.rendering.size);
+    
+    mobs.push(mob);
+    counts[definition.species] = (counts[definition.species] ?? 0) + 1;
+  }
+
+  return mobs;
+}
+
 function ensureChunk(state: GameState, cx: number, cy: number): Chunk {
   const key = chunkKey(cx, cy);
   const existing = state.world.discovered[key];
@@ -259,5 +265,4 @@ function ensureAroundPlayer(state: GameState) {
   }
 }
 
-export { TILE_SIZE, CHUNK_TILES };
 export { chunkKey, difficultyForChunk, ensureChunk, ensureAroundPlayer };

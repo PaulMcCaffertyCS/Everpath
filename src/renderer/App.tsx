@@ -4,7 +4,7 @@ import GameEngine from "./game/engine";
 import { createNewGame } from "./game/state";
 import { decryptSave, encryptSave } from "./game/save";
 import "./styles/app.css";
-import { CHUNK_TILES } from "./game/world";
+import { CHUNK_TILES } from "../shared/declarations";
 
 export default function App() {
   const [engine] = useState(() => new GameEngine(createNewGame()));

@@ -1,9 +1,13 @@
 import type { GameSprites } from "./sprites";
-import { CHUNK_TILES, TILE_SIZE, ensureAroundPlayer } from "./world";
+import { ensureAroundPlayer } from "./world";
 import { mobDefinitions } from "./mobs";
-import { type Mob, type GameState, PLAYER_RADIUS, MOB_RADIUS, biomeToColor } from "../../shared/types";
+import { CHUNK_TILES, TILE_SIZE } from "../../shared/declarations";
+import type { Mob, GameState, Player } from "../../shared/types";
+import { PLAYER_RADIUS, MOB_RADIUS, biomeToColor } from "../../shared/types";
 import SimplePoint from "../../utils/typescript/SimplePoint";
 import { HexColor, blend } from "../../utils/ColorUtils";
+import TileRect from "../../utils/typescript/TileRect";
+import TileCircle from "../../utils/typescript/TileCircle";
 
 class GameEngine {
   constructor(public state: GameState) {
@@ -34,6 +38,7 @@ class GameEngine {
         }
 
         const tile = chunk.tiles[localY * CHUNK_TILES + localX];
+        // console.log(tile);
 
         // context.fillStyle = this.biomeColorAt(new SimplePoint(x + 0.5, y + 0.5), "#000000").value;
         context.fillStyle = biomeToColor[chunk.biome];
@@ -121,6 +126,8 @@ class GameEngine {
       player.position.y = nextY;
     }
 
+    player.rendering.hitbox.update(player.position);
+
     this.state.updatedAt = Date.now();
     ensureAroundPlayer(this.state);
     this.updateMobs(deltaSeconds);
@@ -141,9 +148,12 @@ class GameEngine {
 
   // Seriously broken
   private biomeColorAt(worldPos: SimplePoint, fallback: string): HexColor {
-    const chunkCenter = worldPos.divideValue(CHUNK_TILES).minusValue(0.5);
+    const chunkCenter = worldPos.copy();
+    chunkCenter.divideValue(CHUNK_TILES);
+    chunkCenter.minusValue(0.5);
     const localPoint = new SimplePoint(Math.floor(chunkCenter.x), Math.floor(chunkCenter.y));
-    const tilePoint = chunkCenter.minus(localPoint);
+    const tilePoint = chunkCenter.copy();
+    tilePoint.minus(localPoint);
 
     const colorAt = (chunkPoint: SimplePoint) => {
       const chunk = this.state.world.discovered[`${chunkPoint.x},${chunkPoint.y}`];
@@ -152,12 +162,12 @@ class GameEngine {
 
     const top = blend(
       new HexColor(colorAt(localPoint)),
-      new HexColor(colorAt(localPoint.shiftX(1))),
+      new HexColor(colorAt(localPoint.copy(localPoint.x + 1))),
       tilePoint.x
     );
     const bottom = blend(
-      new HexColor(colorAt(localPoint.shiftY(1))),
-      new HexColor(colorAt(localPoint.plusValue(1))),
+      new HexColor(colorAt(localPoint.copy(undefined, localPoint.y + 1))),
+      new HexColor(colorAt(localPoint.copy(localPoint.x + 1, localPoint.y + 1))),
       tilePoint.x
     );
 
@@ -198,26 +208,53 @@ class GameEngine {
   }
 
   private renderPlayer(context: CanvasRenderingContext2D, centerX: number, centerY: number, sprites: GameSprites) {
+    const player = this.state.player;
     const playerSprite = sprites.player[this.state.player.direction];
 
+    const playerSize = player.rendering.size;
     context.drawImage(
       playerSprite,
-      centerX - 12,
-      centerY - 12,
-      26,
-      32
+      centerX - (playerSize.width / 2),
+      centerY - (playerSize.height / 2),
+      playerSize.width,
+      playerSize.height
     );
 
-    // Debug hitbox: circle in world coordinates, converted to pixels.
+    // Debug center: draw dot at entity center.
     context.save();
     context.beginPath();
     context.arc(
-      centerX + (this.state.player.position.x - this.state.player.position.x) * TILE_SIZE,
-      centerY + (this.state.player.position.y - this.state.player.position.y) * TILE_SIZE,
-      PLAYER_RADIUS * TILE_SIZE,
+      centerX,
+      centerY,
+      2,
       0,
       Math.PI * 2
     );
+    context.strokeStyle = "blue";
+    context.lineWidth = 3;
+    context.stroke();
+    context.restore();
+
+    // Debug hitbox: circle in world coordinates, converted to pixels.
+    const hitbox = player.rendering.hitbox;
+    context.save();
+    context.beginPath();
+    if (hitbox instanceof TileRect) {
+      context.rect(
+        centerX - (playerSize.width / 2),
+        centerY - (playerSize.height / 2),
+        hitbox.width * TILE_SIZE,
+        hitbox.height * TILE_SIZE
+      );
+    } else {
+      context.arc(
+        centerX,
+        centerY,
+        PLAYER_RADIUS * TILE_SIZE,
+        0,
+        Math.PI * 2
+      );
+    }
     context.strokeStyle = "red";
     context.lineWidth = 2;
     context.stroke();
@@ -231,42 +268,69 @@ class GameEngine {
     }
 
     const player = this.state.player;
-
-    const screenX = centerX + (mob.position.x - player.position.x) * TILE_SIZE;
-    const screenY = centerY + (mob.position.y - player.position.y) * TILE_SIZE;
-    const drawWidth = mob.base.rendering.width;
-    const drawHeight = mob.base.rendering.height;
+    const mobHitbox = mob.base.rendering.hitbox;
+    const mobSize = mob.base.rendering.size;
+    const screenPosition = new SimplePoint(
+      centerX + (mob.position.x - player.position.x) * TILE_SIZE,
+      centerY + (mob.position.y - player.position.y) * TILE_SIZE
+    );
 
     context.strokeText(
       mob.base.movementSpeed.toPrecision(4).toString(),
-      screenX + (TILE_SIZE - drawWidth) / 2,
-      (screenY + TILE_SIZE - drawHeight) - (drawHeight + 10)
+      screenPosition.x,
+      screenPosition.y - 15
     );
 
     context.strokeText(
       mob.base.action,
-      screenX + (TILE_SIZE - drawWidth) / 2,
-      (screenY + TILE_SIZE - drawHeight) - (drawHeight)
+      screenPosition.x,
+      screenPosition.y - 5
     );
 
     context.drawImage(
       sprite,
-      screenX + (TILE_SIZE - drawWidth) / 2,
-      screenY + TILE_SIZE - drawHeight,
-      drawWidth,
-      drawHeight
+      screenPosition.x - (mobSize.width / 2),
+      screenPosition.y - (mobSize.height / 2),
+      mobSize.width,
+      mobSize.height
     );
 
-    // Debug hitbox: circle in world coordinates, converted to pixels.
+    // Debug center: draw dot at entity center.
     context.save();
     context.beginPath();
     context.arc(
-      centerX + (mob.position.x - player.position.x) * TILE_SIZE,
-      centerY + (mob.position.y - player.position.y) * TILE_SIZE,
-      MOB_RADIUS * TILE_SIZE,
+      screenPosition.x,
+      screenPosition.y,
+      1,
       0,
       Math.PI * 2
     );
+    context.strokeStyle = "blue";
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
+
+    // Debug hitbox: in world coordinates, converted to pixels.
+    const hitbox = mob.base.rendering.hitbox;
+    const size = mob.base.rendering.size;
+    context.save();
+    context.beginPath();
+    if (hitbox instanceof TileRect) {
+      context.rect(
+        screenPosition.x - (size.width / 2),
+        screenPosition.y - (size.height / 2),
+        hitbox.width * TILE_SIZE,
+        hitbox.height * TILE_SIZE
+      );
+    } else {
+      context.arc(
+        screenPosition.x,
+        screenPosition.y,
+        hitbox.radius * TILE_SIZE,
+        hitbox.startAngle,
+        hitbox.endAngle
+      );
+    }
     context.strokeStyle = "red";
     context.lineWidth = 2;
     context.stroke();
@@ -283,7 +347,8 @@ class GameEngine {
           continue;
         }
 
-        const mobToPlayer = player.position.minus(mob.position);
+        const mobToPlayer = player.position.copy();
+        mobToPlayer.minus(mob.position);
         const distanceToPlayer = Math.hypot(mobToPlayer.x, mobToPlayer.y);
         const isHostile = definition.interactions.relationship === "hostile"
         const withinAttackRange = distanceToPlayer <= mob.base.attack.range
@@ -296,8 +361,10 @@ class GameEngine {
         if (isHostile && distanceToPlayer > mob.base.attack.range) {
           mob.base.action = "chasing";
 
-          const direction = mobToPlayer.divideValue(distanceToPlayer);
-          const dPoint = direction.multiplyValue(mob.base.movementSpeed * deltaSeconds);
+          const direction = mobToPlayer.copy();
+          direction.divideValue(distanceToPlayer);
+          const dPoint = direction.copy();
+          dPoint.multiplyValue(mob.base.movementSpeed * deltaSeconds);
           this.moveMob(mob, dPoint);
 
           continue;
@@ -358,7 +425,9 @@ class GameEngine {
     const prevPoint = mob.position.copy();
     const step = mob.base.movementSpeed * Math.min(deltaSeconds, ai.wanderTimeRemaining);
 
-    this.moveMob(mob, ai.wanderDirection.multiplyValue(step));
+    const dPoint = ai.wanderDirection.copy();
+    dPoint.multiplyValue(step);
+    this.moveMob(mob, dPoint);
 
     ai.wanderTimeRemaining = Math.max(0, ai.wanderTimeRemaining - deltaSeconds);
 
@@ -382,6 +451,8 @@ class GameEngine {
       mob.position.y = nextY;
     }
 
+    mob.base.rendering.hitbox.update(mob.position);
+
     if (Math.abs(dPoint.x) > Math.abs(dPoint.y)) {
       if (dPoint.x !== 0) {
         mob.direction = dPoint.x < 0 ? "left" : "right";
@@ -393,13 +464,19 @@ class GameEngine {
 
   private canPlayerMoveToTile(x: number, y: number, radius: number): boolean {
     if (!this.isTerrainTileClear(x, y, radius)) {
+      // console.log("invalid terrain tile");
       return false;
     }
 
+    const futurePoint = new SimplePoint(x, y);
+    const player = this.state.player;
+    const futureHitbox = player.rendering.hitbox instanceof TileRect ?
+      TileRect.fromPointAndSize(futurePoint, player.rendering.size) :
+      TileCircle.fromPointAndSize(futurePoint, player.rendering.size);
+
     for (const chunk of Object.values(this.state.world.discovered)) {
       for (const mob of chunk.mobs) {
-        const distance = Math.hypot(x - mob.position.x, y - mob.position.y);
-        if (distance < PLAYER_RADIUS + MOB_RADIUS) {
+        if (this.doEntitiesCollide(mob.base.rendering.hitbox, futureHitbox)) {
           return false;
         }
       }
@@ -413,9 +490,13 @@ class GameEngine {
       return false;
     }
 
-    const player = this.state.player;
-    const playerDistance = Math.hypot(x - player.position.x, y - player.position.y);
-    if (playerDistance < radius + PLAYER_RADIUS) {
+    const futurePoint = new SimplePoint(x, y);
+    const mobSize = mob.base.rendering.size;
+    const futureHitbox = mob.base.rendering.hitbox instanceof TileRect ?
+      TileRect.fromPointAndSize(futurePoint, mobSize) :
+      TileCircle.fromPointAndSize(futurePoint, mobSize);
+
+    if (this.doEntitiesCollide(futureHitbox, this.state.player.rendering.hitbox)) {
       return false;
     }
 
@@ -425,8 +506,7 @@ class GameEngine {
           continue;
         }
 
-        const distance = Math.hypot(x - otherMob.position.x, y - otherMob.position.y);
-        if (distance < radius + MOB_RADIUS) {
+        if (this.doEntitiesCollide(futureHitbox, undefined, otherMob.base.rendering.hitbox)) {
           return false;
         }
       }
@@ -447,10 +527,12 @@ class GameEngine {
             Math.max(tileY, Math.min(y, tileY + 1))
           )
 
-          const dPoint = new SimplePoint(x, y).minus(closestTile);
+          const dPoint = new SimplePoint(x, y);
+          dPoint.minus(closestTile);
 
           if (dPoint.x * dPoint.x + dPoint.y * dPoint.y < radius * radius) {
             // console.log(`dPoint=${(dPoint.x, dPoint.y)}`);
+            // console.log("invalid dPoint");
             return false;
           }
         }
@@ -473,12 +555,35 @@ class GameEngine {
 
     const chunk = this.state.world.discovered[`${chunkPoint.x},${chunkPoint.y}`];
     if (!chunk) {
+      // console.log("invalid chunk");
       return false;
     }
 
     const tile = chunk.tiles[localPoint.y * CHUNK_TILES + localPoint.x];
 
-    return tile === 0;
+    // console.log(`tile === 0: ${tile === 0}`);
+    return tile === undefined || tile === 0;
+  }
+
+  private doEntitiesCollide(
+    mobHitbox: TileRect | TileCircle,
+    playerHitbox?: TileRect | TileCircle | undefined,
+    otherMobHitbox?: TileRect | TileCircle | undefined
+  ): boolean {
+    if (playerHitbox === undefined) {
+      if (otherMobHitbox === undefined) {
+        console.error(`Entity collision check received only one entity`);
+        return false;
+      }
+
+      return otherMobHitbox instanceof TileRect ?
+        mobHitbox.overlapsRect(otherMobHitbox) :
+        mobHitbox.overlapsCircle(otherMobHitbox);
+    } else {
+      return mobHitbox instanceof TileRect ?
+        playerHitbox.overlapsRect(mobHitbox) :
+        playerHitbox.overlapsCircle(mobHitbox);
+    }
   }
 }
 

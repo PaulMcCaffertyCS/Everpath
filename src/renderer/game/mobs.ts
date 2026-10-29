@@ -1,5 +1,8 @@
-import type { MobSpecies, MobBase, Mob, Player } from "../../shared/types";
-import { generateUuid } from "../../utils/UuidUtils";
+import { MOB_SIZES } from "../../shared/types.js";
+import type { MobSpecies, MobBase } from "../../shared/types.js";
+import SimplePoint from "../../utils/typescript/SimplePoint.js";
+import TileCircle from "../../utils/typescript/TileCircle.js";
+import TileRect from "../../utils/typescript/TileRect.js";
 
 const mobDefinitions: Record<MobSpecies, MobBase> = {
   dragon: {
@@ -37,8 +40,8 @@ const mobDefinitions: Record<MobSpecies, MobBase> = {
     },
 
     rendering: {
-      width: 40,
-      height: 34
+      size: MOB_SIZES.dragon,
+      hitbox: TileRect.fromPointAndSize(new SimplePoint(0, 0), MOB_SIZES.dragon)
     }
   },
   goblin: {
@@ -74,8 +77,8 @@ const mobDefinitions: Record<MobSpecies, MobBase> = {
     },
 
     rendering: {
-      width: 26,
-      height: 32
+      size: MOB_SIZES.goblin,
+      hitbox: TileRect.fromPointAndSize(new SimplePoint(0, 0), MOB_SIZES.goblin)
     }
   },
   slime: {
@@ -112,45 +115,10 @@ const mobDefinitions: Record<MobSpecies, MobBase> = {
     },
 
     rendering: {
-      width: 24,
-      height: 22
-    }
-  }
-}
-
-function createGoblin(player: Player): Mob {
-  const uuid = generateUuid();
-  return {
-    id: uuid,
-    base: mobDefinitions["goblin"],
-    name: uuid,
-    position: player.position.shiftY(10),
-    direction: "up",
-      
-    interactions: {
-      taming: {
-        isTamed: false
-      }
-    }
-  }
-}
-
-function createSlime(player: Player): Mob {
-  const uuid = generateUuid();
-  return {
-    id: uuid,
-    base: mobDefinitions["slime"],
-    name: uuid,
-    position: player.position.shiftY(10),
-    direction: "up",
-      
-    interactions: {
-      taming: {
-        isTamed: false
-      }
+      size: MOB_SIZES.slime,
+      hitbox: TileCircle.fromPointAndSize(new SimplePoint(0, 0), MOB_SIZES.slime)
     }
   }
 }
 
 export { mobDefinitions };
-export { createGoblin, createSlime };
