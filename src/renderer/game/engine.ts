@@ -221,19 +221,19 @@ class GameEngine {
     );
 
     // Debug center: draw dot at entity center.
-    context.save();
-    context.beginPath();
-    context.arc(
-      centerX,
-      centerY,
-      2,
-      0,
-      Math.PI * 2
-    );
-    context.strokeStyle = "blue";
-    context.lineWidth = 3;
-    context.stroke();
-    context.restore();
+    // context.save();
+    // context.beginPath();
+    // context.arc(
+    //   centerX,
+    //   centerY,
+    //   2,
+    //   0,
+    //   Math.PI * 2
+    // );
+    // context.strokeStyle = "blue";
+    // context.lineWidth = 3;
+    // context.stroke();
+    // context.restore();
 
     // Debug hitbox: circle in world coordinates, converted to pixels.
     const hitbox = player.rendering.hitbox;
@@ -250,12 +250,41 @@ class GameEngine {
       context.arc(
         centerX,
         centerY,
-        PLAYER_RADIUS * TILE_SIZE,
+        hitbox.radius * TILE_SIZE,
         0,
         Math.PI * 2
       );
     }
-    context.strokeStyle = "red";
+    context.strokeStyle = `rgba(248, 112, 112, 0.75)`;
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
+
+    // Debug attack range: in world coordinates, converted to pixels.
+    let attackbox = player.rendering.hitbox.copy();
+    attackbox.increaseSize(player.attack.range);
+    if (attackbox instanceof TileRect) {
+      attackbox = attackbox.toTileCirlce();
+    }
+
+    context.save();
+    context.beginPath();
+    // if (attackbox instanceof TileRect) {
+    //   context.rect(
+    //     centerX - ((attackbox.width * TILE_SIZE) / 2),
+    //     centerY - ((attackbox.height * TILE_SIZE) / 2),
+    //     attackbox.width * TILE_SIZE,
+    //     attackbox.height * TILE_SIZE
+    //   );
+    // }
+    context.arc(
+      centerX,
+      centerY,
+      attackbox.radius * TILE_SIZE,
+      attackbox.startAngle,
+      attackbox.endAngle
+    );
+    context.strokeStyle = `rgba(255, 22, 22, 0.75)`;
     context.lineWidth = 2;
     context.stroke();
     context.restore();
@@ -275,18 +304,6 @@ class GameEngine {
       centerY + (mob.position.y - player.position.y) * TILE_SIZE
     );
 
-    context.strokeText(
-      mob.base.movementSpeed.toPrecision(4).toString(),
-      screenPosition.x,
-      screenPosition.y - 15
-    );
-
-    context.strokeText(
-      mob.base.action,
-      screenPosition.x,
-      screenPosition.y - 5
-    );
-
     context.drawImage(
       sprite,
       screenPosition.x - (mobSize.width / 2),
@@ -295,20 +312,33 @@ class GameEngine {
       mobSize.height
     );
 
-    // Debug center: draw dot at entity center.
-    context.save();
-    context.beginPath();
-    context.arc(
-      screenPosition.x,
-      screenPosition.y,
-      1,
-      0,
-      Math.PI * 2
+    // Debug: speed and status
+    context.strokeText(
+      mob.base.movementSpeed.toPrecision(4).toString(),
+      screenPosition.x - (mobSize.width / 2),
+      screenPosition.y - (mobSize.height / 2) - 15
     );
-    context.strokeStyle = "blue";
-    context.lineWidth = 2;
-    context.stroke();
-    context.restore();
+
+    context.strokeText(
+      mob.base.action,
+      screenPosition.x - (mobSize.width / 2),
+      screenPosition.y - (mobSize.height / 2) - 5
+    );
+
+    // Debug center: draw dot at entity center.
+    // context.save();
+    // context.beginPath();
+    // context.arc(
+    //   screenPosition.x,
+    //   screenPosition.y,
+    //   1,
+    //   0,
+    //   Math.PI * 2
+    // );
+    // context.strokeStyle = "blue";
+    // context.lineWidth = 2;
+    // context.stroke();
+    // context.restore();
 
     // Debug hitbox: in world coordinates, converted to pixels.
     const hitbox = mob.base.rendering.hitbox;
@@ -331,7 +361,36 @@ class GameEngine {
         hitbox.endAngle
       );
     }
-    context.strokeStyle = "red";
+    context.strokeStyle = `rgba(248, 112, 112, 0.75)`;
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
+
+    // Debug attack range: in world coordinates, converted to pixels.
+    let attackbox = hitbox.copy();
+    attackbox.increaseSize(mob.base.attack.range);
+    if (attackbox instanceof TileRect) {
+      attackbox = attackbox.toTileCirlce();
+    }
+
+    context.save();
+    context.beginPath();
+    // if (attackbox instanceof TileRect) {
+    //   context.rect(
+    //     screenPosition.x - ((attackbox.width * TILE_SIZE) / 2),
+    //     screenPosition.y - ((attackbox.height * TILE_SIZE) / 2),
+    //     attackbox.width * TILE_SIZE,
+    //     attackbox.height * TILE_SIZE
+    //   );
+    // }
+    context.arc(
+      screenPosition.x,
+      screenPosition.y,
+      attackbox.radius * TILE_SIZE,
+      attackbox.startAngle,
+      attackbox.endAngle
+    );
+    context.strokeStyle = `rgba(255, 22, 22, 0.75)`;
     context.lineWidth = 2;
     context.stroke();
     context.restore();
@@ -347,20 +406,24 @@ class GameEngine {
           continue;
         }
 
-        const mobToPlayer = player.position.copy();
-        mobToPlayer.minus(mob.position);
-        const distanceToPlayer = Math.hypot(mobToPlayer.x, mobToPlayer.y);
-        const isHostile = definition.interactions.relationship === "hostile"
-        const withinAttackRange = distanceToPlayer <= mob.base.attack.range
+        let mobAttackbox = mob.base.rendering.hitbox.copy();
+        if (mobAttackbox instanceof TileRect) {
+          mobAttackbox = mobAttackbox.toTileCirlce();
+        }
+        mobAttackbox.increaseSize(mob.base.attack.range);
 
-        if (isHostile && distanceToPlayer > 0 && withinAttackRange) {
+        const isHostile = definition.interactions.relationship === "hostile"
+        if (isHostile && this.isPlayerWithinAttackRange(player.rendering.hitbox, mobAttackbox)) {
           mob.base.action = "attacking";
           continue;
         }
 
-        if (isHostile && distanceToPlayer > mob.base.attack.range) {
+        if (isHostile && !this.isPlayerWithinAttackRange(player.rendering.hitbox, mobAttackbox)) {
           mob.base.action = "chasing";
 
+          const mobToPlayer = player.position.copy();
+          mobToPlayer.minus(mob.position);
+          const distanceToPlayer = Math.hypot(mobToPlayer.x, mobToPlayer.y);
           const direction = mobToPlayer.copy();
           direction.divideValue(distanceToPlayer);
           const dPoint = direction.copy();
@@ -462,6 +525,13 @@ class GameEngine {
     }
   }
 
+  private isPlayerWithinAttackRange(
+    playerHitbox: TileCircle | TileRect,
+    mobAttackbox: TileCircle
+  ): boolean {
+    return this.doHitboxesIntersect(mobAttackbox, playerHitbox);
+  }
+
   private canPlayerMoveToTile(x: number, y: number, radius: number): boolean {
     if (!this.isTerrainTileClear(x, y, radius)) {
       // console.log("invalid terrain tile");
@@ -476,7 +546,7 @@ class GameEngine {
 
     for (const chunk of Object.values(this.state.world.discovered)) {
       for (const mob of chunk.mobs) {
-        if (this.doEntitiesCollide(mob.base.rendering.hitbox, futureHitbox)) {
+        if (this.doHitboxesIntersect(mob.base.rendering.hitbox, futureHitbox)) {
           return false;
         }
       }
@@ -496,7 +566,7 @@ class GameEngine {
       TileRect.fromPointAndSize(futurePoint, mobSize) :
       TileCircle.fromPointAndSize(futurePoint, mobSize);
 
-    if (this.doEntitiesCollide(futureHitbox, this.state.player.rendering.hitbox)) {
+    if (this.doHitboxesIntersect(futureHitbox, this.state.player.rendering.hitbox)) {
       return false;
     }
 
@@ -506,7 +576,7 @@ class GameEngine {
           continue;
         }
 
-        if (this.doEntitiesCollide(futureHitbox, undefined, otherMob.base.rendering.hitbox)) {
+        if (this.doHitboxesIntersect(futureHitbox, undefined, otherMob.base.rendering.hitbox)) {
           return false;
         }
       }
@@ -565,7 +635,7 @@ class GameEngine {
     return tile === undefined || tile === 0;
   }
 
-  private doEntitiesCollide(
+  private doHitboxesIntersect(
     mobHitbox: TileRect | TileCircle,
     playerHitbox?: TileRect | TileCircle | undefined,
     otherMobHitbox?: TileRect | TileCircle | undefined

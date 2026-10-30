@@ -13,8 +13,8 @@ const mobSpawnRules: Record<BiomeType, MobSpawnRule[]> = {
   astridland: [
     {
       speciesId: "dragon",
-      weight: 10,
-      maxPerChunk: 3
+      weight: 8,
+      maxPerChunk: 1
     }
   ],
   forest: [

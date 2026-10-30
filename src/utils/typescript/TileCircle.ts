@@ -1,7 +1,7 @@
 import SimplePoint from "./SimplePoint.js";
-import type SimpleSize from "./SimpleSize.js";
+import SimpleSize from "./SimpleSize.js";
 import { TILE_SIZE } from "../../shared/declarations.js";
-import type TileRect from "./TileRect.js";
+import TileRect from "./TileRect.js";
 
 class TileCircle {
   x: number;
@@ -27,11 +27,6 @@ class TileCircle {
   }
 
   static fromPointAndSize(center: SimplePoint, size: SimpleSize): TileCircle {
-    // const center = new SimplePoint(
-    //   topLeft.x + ((size.width / TILE_SIZE) / 2),
-    //   topLeft.y + ((size.height / TILE_SIZE) / 2)
-    // );
-
     return new TileCircle(
       center.x,
       center.y,
@@ -47,6 +42,30 @@ class TileCircle {
     this.center = center.copy();
   }
 
+  increaseSize(value: number) {
+    if (value < 0) {
+      console.warn("Cannot use a negative value to increase the size of a TileCircle. Calling decrease function");
+      this.increaseSize(value);
+      return;
+    }
+
+    this.radius += (value / 2);
+    this.diameter += value;
+    this.circumference = Math.PI * (this.radius ^ 2);
+  }
+
+  decreaseSize(value: number) {
+    if (value < 0) {
+      console.warn("Cannot use a negative value to decrease the size of a TileCircle. Calling increase function");
+      this.increaseSize(value);
+      return;
+    }
+
+    this.radius -= (value / 2);
+    this.diameter -= value;
+    this.circumference = Math.PI * (this.radius ^ 2);
+  }
+
   overlapsCircle(circle: TileCircle): boolean {
     const distance = Math.hypot(this.x - circle.x, this.y - circle.y);
     const radiusSum = this.radius + circle.radius;
@@ -57,6 +76,19 @@ class TileCircle {
   overlapsRect(rect: TileRect): boolean {
     // console.log(`circle over rect: rect.overlapsCircle(this)`);
     return rect.overlapsCircle(this);
+  }
+
+  copy(): TileCircle {
+    return new TileCircle(this.x, this.y, this.radius, this.startAngle, this.endAngle, this.counterClockwise);
+  }
+
+  toTileRect(): TileRect {
+    return new TileRect(
+      this.center.x - this.radius,
+      this.center.y - this.radius,
+      this.center.x + this.radius,
+      this.center.y + this.radius
+    );
   }
 }
 

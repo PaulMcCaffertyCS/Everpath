@@ -1,3 +1,4 @@
+import { CHUNK_TILES } from "../../shared/declarations";
 import { PLAYER_SIZE } from "../../shared/types";
 import type { GameState } from "../../shared/types";
 import SimplePoint from "../../utils/typescript/SimplePoint";
@@ -45,7 +46,7 @@ function createNewGame(): GameState {
     mobs: [],
     world: {
       seed: Math.floor(Math.random() * 0xffffffff),
-      chunkSize: 24,
+      chunkSize: CHUNK_TILES,
       discovered: {},
       currentChunkKey: "0,0"
     }
