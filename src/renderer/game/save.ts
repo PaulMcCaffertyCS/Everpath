@@ -1,4 +1,8 @@
 import type { GameState } from "../../shared/types";
+import SimplePoint from "../../utils/typescript/SimplePoint";
+import SimpleSize from "../../utils/typescript/SimpleSize";
+import TileCircle from "../../utils/typescript/TileCircle";
+import TileRect from "../../utils/typescript/TileRect";
 
 interface SaveEnvelope {
   format: "everpath-save";
@@ -36,6 +40,58 @@ function bytesToBase64(bytes: Uint8Array): string {
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
+
+function restoreGameObjects(state: GameState): GameState {
+  state.player.position = new SimplePoint(state.player.position.x, state.player.position.y);
+  state.player.rendering.size = new SimpleSize(
+    state.player.rendering.size.width,
+    state.player.rendering.size.height
+  );
+  state.player.rendering.hitbox = restoreHitbox(state.player.rendering.hitbox);
+
+  for (const mob of state.mobs) {
+    restoreMobObjects(mob);
+  }
+
+  for (const chunk of Object.values(state.world.discovered)) {
+    for (const mob of chunk.mobs) {
+      restoreMobObjects(mob);
+    }
+  }
+
+  return state;
+}
+
+function restoreMobObjects(mob: GameState["mobs"][number]) {
+  mob.position = new SimplePoint(mob.position.x, mob.position.y);
+  mob.base.rendering.size = new SimpleSize(
+    mob.base.rendering.size.width,
+    mob.base.rendering.size.height
+  );
+  mob.base.rendering.hitbox = restoreHitbox(mob.base.rendering.hitbox);
+
+  if (mob.ai) {
+    mob.ai.wanderDirection = new SimplePoint(
+      mob.ai.wanderDirection.x,
+      mob.ai.wanderDirection.y
+    );
+  }
+}
+
+function restoreHitbox(hitbox: GameState["player"]["rendering"]["hitbox"]) {
+  if ("radius" in hitbox) {
+    return new TileCircle(
+      hitbox.x,
+      hitbox.y,
+      hitbox.radius,
+      hitbox.startAngle,
+      hitbox.endAngle,
+      hitbox.counterClockwise
+    );
+  }
+
+  return new TileRect(hitbox.left, hitbox.top, hitbox.right, hitbox.bottom);
 }
 
 async function deriveKey(
@@ -137,7 +193,8 @@ async function decryptSave(
     encrypted
   );
 
-  return JSON.parse(decoder.decode(plaintext)) as GameState;
+  const state = JSON.parse(decoder.decode(plaintext)) as GameState;
+  return restoreGameObjects(state);
 }
 
 export { encryptSave, decryptSave };

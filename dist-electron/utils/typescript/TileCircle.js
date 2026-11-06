@@ -1,5 +1,7 @@
 import SimplePoint from "./SimplePoint.js";
+import SimpleSize from "./SimpleSize.js";
 import { TILE_SIZE } from "../../shared/declarations.js";
+import TileRect from "./TileRect.js";
 class TileCircle {
     x;
     y;
@@ -22,16 +24,32 @@ class TileCircle {
         this.counterClockwise = counterClockwise;
     }
     static fromPointAndSize(center, size) {
-        // const center = new SimplePoint(
-        //   topLeft.x + ((size.width / TILE_SIZE) / 2),
-        //   topLeft.y + ((size.height / TILE_SIZE) / 2)
-        // );
         return new TileCircle(center.x, center.y, Math.max((size.width / TILE_SIZE), (size.height / TILE_SIZE)) / 2, 0, Math.PI * 2);
     }
     update(center) {
         this.x = center.x;
         this.y = center.y;
         this.center = center.copy();
+    }
+    increaseSize(value) {
+        if (value < 0) {
+            console.warn("Cannot use a negative value to increase the size of a TileCircle. Calling decrease function");
+            this.increaseSize(value);
+            return;
+        }
+        this.radius += (value / 2);
+        this.diameter += value;
+        this.circumference = Math.PI * (this.radius ^ 2);
+    }
+    decreaseSize(value) {
+        if (value < 0) {
+            console.warn("Cannot use a negative value to decrease the size of a TileCircle. Calling increase function");
+            this.increaseSize(value);
+            return;
+        }
+        this.radius -= (value / 2);
+        this.diameter -= value;
+        this.circumference = Math.PI * (this.radius ^ 2);
     }
     overlapsCircle(circle) {
         const distance = Math.hypot(this.x - circle.x, this.y - circle.y);
@@ -42,6 +60,12 @@ class TileCircle {
     overlapsRect(rect) {
         // console.log(`circle over rect: rect.overlapsCircle(this)`);
         return rect.overlapsCircle(this);
+    }
+    copy() {
+        return new TileCircle(this.x, this.y, this.radius, this.startAngle, this.endAngle, this.counterClockwise);
+    }
+    toTileRect() {
+        return new TileRect(this.center.x - this.radius, this.center.y - this.radius, this.center.x + this.radius, this.center.y + this.radius);
     }
 }
 export default TileCircle;

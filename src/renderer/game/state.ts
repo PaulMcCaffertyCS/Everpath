@@ -12,7 +12,7 @@ function createNewGame(): GameState {
     createdAt: now,
     updatedAt: now,
     player: {
-      name: "Hero",
+      name: "Tester",
       race: "human",
       classes: ["swordsman"],
       level: 1,
