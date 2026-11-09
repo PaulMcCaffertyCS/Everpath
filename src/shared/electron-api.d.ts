@@ -5,6 +5,7 @@ declare global {
     electronAPI: {
       saveTextFile: (defaultName: string, contents: string) => Promise<string | null>;
       openTextFile: () => Promise<string | null>;
+      onToggleHitboxes: (callback: ((show: boolean) => void)) => () => void;
     };
   }
 }

@@ -10,7 +10,7 @@ import TileRect from "../../utils/typescript/TileRect.js";
 import TileCircle from "../../utils/typescript/TileCircle.js";
 
 const mobSpawnRules: Record<BiomeType, MobSpawnRule[]> = {
-  astridland: [
+  dragontopia: [
     {
       speciesId: "dragon",
       weight: 8,

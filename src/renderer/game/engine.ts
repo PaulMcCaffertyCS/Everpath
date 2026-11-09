@@ -5,11 +5,17 @@ import { CHUNK_TILES, TILE_SIZE } from "../../shared/declarations";
 import type { Mob, GameState, Player } from "../../shared/types";
 import { PLAYER_RADIUS, MOB_RADIUS, biomeToColor } from "../../shared/types";
 import SimplePoint from "../../utils/typescript/SimplePoint";
-import { HexColor, blend } from "../../utils/ColorUtils";
+import { HexColor } from "../../utils/ColorUtils";
 import TileRect from "../../utils/typescript/TileRect";
 import TileCircle from "../../utils/typescript/TileCircle";
+import { hashString, mulberry32 } from "./seed";
+
+const BIOME_TRANSITION_SUBDIVISIONS = 16;
+const BIOME_TRANSITION_WIDTH = 2;
 
 class GameEngine {
+  showHitboxes: boolean = false;
+
   constructor(public state: GameState) {
     ensureAroundPlayer(this.state);
   }
@@ -40,15 +46,31 @@ class GameEngine {
         const tile = chunk.tiles[localY * CHUNK_TILES + localX];
         // console.log(tile);
 
-        // context.fillStyle = this.biomeColorAt(new SimplePoint(x + 0.5, y + 0.5), "#000000").value;
-        context.fillStyle = biomeToColor[chunk.biome];
+        const subdivisionsX = localX < BIOME_TRANSITION_WIDTH
+          || localX >= CHUNK_TILES - BIOME_TRANSITION_WIDTH
+          ? BIOME_TRANSITION_SUBDIVISIONS
+          : 1;
+        const subdivisionsY = localY < BIOME_TRANSITION_WIDTH
+          || localY >= CHUNK_TILES - BIOME_TRANSITION_WIDTH
+          ? BIOME_TRANSITION_SUBDIVISIONS
+          : 1;
 
-        context.fillRect(
-          centerX + (x - player.position.x) * TILE_SIZE,
-          centerY + (y - player.position.y) * TILE_SIZE,
-          TILE_SIZE + 1,
-          TILE_SIZE + 1
-        );
+        for (let subY = 0; subY < subdivisionsY; subY++) {
+          for (let subX = 0; subX < subdivisionsX; subX++) {
+            const worldX = x + (subX + 0.5) / subdivisionsX;
+            const worldY = y + (subY + 0.5) / subdivisionsY;
+            context.fillStyle = this.biomeColorAt(
+              new SimplePoint(worldX, worldY),
+              "#000000"
+            ).value;
+            context.fillRect(
+              centerX + (worldX - player.position.x) * TILE_SIZE - TILE_SIZE / (2 * subdivisionsX),
+              centerY + (worldY - player.position.y) * TILE_SIZE - TILE_SIZE / (2 * subdivisionsY),
+              TILE_SIZE / subdivisionsX + 1,
+              TILE_SIZE / subdivisionsY + 1
+            );
+          }
+        }
 
         if (tile === 1) {
           context.fillStyle = "#1b2b20";
@@ -148,30 +170,75 @@ class GameEngine {
 
   // Seriously broken
   private biomeColorAt(worldPos: SimplePoint, fallback: string): HexColor {
-    const chunkCenter = worldPos.copy();
-    chunkCenter.divideValue(CHUNK_TILES);
-    chunkCenter.minusValue(0.5);
-    const localPoint = new SimplePoint(Math.floor(chunkCenter.x), Math.floor(chunkCenter.y));
-    const tilePoint = chunkCenter.copy();
-    tilePoint.minus(localPoint);
+    const chunkX = Math.floor(worldPos.x / CHUNK_TILES);
+    const chunkY = Math.floor(worldPos.y / CHUNK_TILES);
+    const localX = worldPos.x - chunkX * CHUNK_TILES;
+    const localY = worldPos.y - chunkY * CHUNK_TILES;
 
-    const colorAt = (chunkPoint: SimplePoint) => {
-      const chunk = this.state.world.discovered[`${chunkPoint.x},${chunkPoint.y}`];
-      return chunk ? (biomeToColor[chunk.biome] ?? fallback) : fallback;
+    const colorAt = (cx: number, cy: number) => {
+      const chunk = this.state.world.discovered[`${cx},${cy}`];
+      return new HexColor(chunk ? biomeToColor[chunk.biome] : fallback);
     };
 
-    const top = blend(
-      new HexColor(colorAt(localPoint)),
-      new HexColor(colorAt(localPoint.copy(localPoint.x + 1))),
-      tilePoint.x
-    );
-    const bottom = blend(
-      new HexColor(colorAt(localPoint.copy(undefined, localPoint.y + 1))),
-      new HexColor(colorAt(localPoint.copy(localPoint.x + 1, localPoint.y + 1))),
-      tilePoint.x
-    );
+    const horizontalColorAt = (cy: number) => {
+      const current = colorAt(chunkX, cy);
 
-    return blend(top, bottom, tilePoint.y);
+      if (localX < BIOME_TRANSITION_WIDTH) {
+        return this.patchyBiomeBlend(
+          colorAt(chunkX - 1, cy),
+          current,
+          (localX + BIOME_TRANSITION_WIDTH) / (2 * BIOME_TRANSITION_WIDTH),
+          `x:${chunkX}:${Math.floor(worldPos.y * 1.5)}`,
+          worldPos
+        );
+      }
+
+      if (localX > CHUNK_TILES - BIOME_TRANSITION_WIDTH) {
+        return this.patchyBiomeBlend(
+          current,
+          colorAt(chunkX + 1, cy),
+          (localX - (CHUNK_TILES - BIOME_TRANSITION_WIDTH)) / (2 * BIOME_TRANSITION_WIDTH),
+          `x:${chunkX + 1}:${Math.floor(worldPos.y * 1.5)}`,
+          worldPos
+        );
+      }
+
+      return current;
+    };
+
+    const current = horizontalColorAt(chunkY);
+    if (localY < BIOME_TRANSITION_WIDTH) {
+      return this.patchyBiomeBlend(
+        horizontalColorAt(chunkY - 1),
+        current,
+        (localY + BIOME_TRANSITION_WIDTH) / (2 * BIOME_TRANSITION_WIDTH),
+        `y:${chunkY}:${Math.floor(worldPos.x * 1.5)}`,
+        worldPos
+      );
+    }
+
+    if (localY > CHUNK_TILES - BIOME_TRANSITION_WIDTH) {
+      return this.patchyBiomeBlend(
+        current,
+        horizontalColorAt(chunkY + 1),
+        (localY - (CHUNK_TILES - BIOME_TRANSITION_WIDTH)) / (2 * BIOME_TRANSITION_WIDTH),
+        `y:${chunkY + 1}:${Math.floor(worldPos.x * 1.5)}`,
+        worldPos
+      );
+    }
+
+    return current;
+  }
+
+  private patchyBiomeBlend(from: HexColor, to: HexColor, amount: number, patch: string, worldPos: SimplePoint): HexColor {
+    const t = Math.max(0, Math.min(1, amount));
+    const blendAmount = t * t * (3 - 2 * t);
+    const random = mulberry32(
+      hashString(
+        `${this.state.world.seed}:${patch}`
+      )
+    )();
+    return random < blendAmount ? to : from;
   }
 
   private renderTowns(ctx: CanvasRenderingContext2D, centerX: number, centerY: number) {
@@ -220,74 +287,9 @@ class GameEngine {
       playerSize.height
     );
 
-    // Debug center: draw dot at entity center.
-    // context.save();
-    // context.beginPath();
-    // context.arc(
-    //   centerX,
-    //   centerY,
-    //   2,
-    //   0,
-    //   Math.PI * 2
-    // );
-    // context.strokeStyle = "blue";
-    // context.lineWidth = 3;
-    // context.stroke();
-    // context.restore();
-
-    // Debug hitbox: circle in world coordinates, converted to pixels.
-    const hitbox = player.rendering.hitbox;
-    context.save();
-    context.beginPath();
-    if (hitbox instanceof TileRect) {
-      context.rect(
-        centerX - (playerSize.width / 2),
-        centerY - (playerSize.height / 2),
-        hitbox.width * TILE_SIZE,
-        hitbox.height * TILE_SIZE
-      );
-    } else {
-      context.arc(
-        centerX,
-        centerY,
-        hitbox.radius * TILE_SIZE,
-        0,
-        Math.PI * 2
-      );
+    if (this.showHitboxes) {
+      this.drawDebugStats(context, new SimplePoint(centerX, centerY), player);
     }
-    context.strokeStyle = `rgba(248, 112, 112, 0.75)`;
-    context.lineWidth = 2;
-    context.stroke();
-    context.restore();
-
-    // Debug attack range: in world coordinates, converted to pixels.
-    let attackbox = player.rendering.hitbox.copy();
-    attackbox.increaseSize(player.attack.range);
-    if (attackbox instanceof TileRect) {
-      attackbox = attackbox.toTileCirlce();
-    }
-
-    context.save();
-    context.beginPath();
-    // if (attackbox instanceof TileRect) {
-    //   context.rect(
-    //     centerX - ((attackbox.width * TILE_SIZE) / 2),
-    //     centerY - ((attackbox.height * TILE_SIZE) / 2),
-    //     attackbox.width * TILE_SIZE,
-    //     attackbox.height * TILE_SIZE
-    //   );
-    // }
-    context.arc(
-      centerX,
-      centerY,
-      attackbox.radius * TILE_SIZE,
-      attackbox.startAngle,
-      attackbox.endAngle
-    );
-    context.strokeStyle = `rgba(255, 22, 22, 0.75)`;
-    context.lineWidth = 2;
-    context.stroke();
-    context.restore();
   }
 
   private renderMob(context: CanvasRenderingContext2D, mob: Mob, centerX: number, centerY: number, sprites: GameSprites) {
@@ -297,7 +299,6 @@ class GameEngine {
     }
 
     const player = this.state.player;
-    const mobHitbox = mob.base.rendering.hitbox;
     const mobSize = mob.base.rendering.size;
     const screenPosition = new SimplePoint(
       centerX + (mob.position.x - player.position.x) * TILE_SIZE,
@@ -312,88 +313,9 @@ class GameEngine {
       mobSize.height
     );
 
-    // Debug: speed and status
-    context.strokeText(
-      mob.base.movementSpeed.toPrecision(4).toString(),
-      screenPosition.x - (mobSize.width / 2),
-      screenPosition.y - (mobSize.height / 2) - 15
-    );
-
-    context.strokeText(
-      mob.base.action,
-      screenPosition.x - (mobSize.width / 2),
-      screenPosition.y - (mobSize.height / 2) - 5
-    );
-
-    // Debug center: draw dot at entity center.
-    // context.save();
-    // context.beginPath();
-    // context.arc(
-    //   screenPosition.x,
-    //   screenPosition.y,
-    //   1,
-    //   0,
-    //   Math.PI * 2
-    // );
-    // context.strokeStyle = "blue";
-    // context.lineWidth = 2;
-    // context.stroke();
-    // context.restore();
-
-    // Debug hitbox: in world coordinates, converted to pixels.
-    const hitbox = mob.base.rendering.hitbox;
-    const size = mob.base.rendering.size;
-    context.save();
-    context.beginPath();
-    if (hitbox instanceof TileRect) {
-      context.rect(
-        screenPosition.x - (size.width / 2),
-        screenPosition.y - (size.height / 2),
-        hitbox.width * TILE_SIZE,
-        hitbox.height * TILE_SIZE
-      );
-    } else {
-      context.arc(
-        screenPosition.x,
-        screenPosition.y,
-        hitbox.radius * TILE_SIZE,
-        hitbox.startAngle,
-        hitbox.endAngle
-      );
+    if (this.showHitboxes) {
+      this.drawDebugStats(context, screenPosition, undefined, mob);
     }
-    context.strokeStyle = `rgba(248, 112, 112, 0.75)`;
-    context.lineWidth = 2;
-    context.stroke();
-    context.restore();
-
-    // Debug attack range: in world coordinates, converted to pixels.
-    let attackbox = hitbox.copy();
-    attackbox.increaseSize(mob.base.attack.range);
-    if (attackbox instanceof TileRect) {
-      attackbox = attackbox.toTileCirlce();
-    }
-
-    context.save();
-    context.beginPath();
-    // if (attackbox instanceof TileRect) {
-    //   context.rect(
-    //     screenPosition.x - ((attackbox.width * TILE_SIZE) / 2),
-    //     screenPosition.y - ((attackbox.height * TILE_SIZE) / 2),
-    //     attackbox.width * TILE_SIZE,
-    //     attackbox.height * TILE_SIZE
-    //   );
-    // }
-    context.arc(
-      screenPosition.x,
-      screenPosition.y,
-      attackbox.radius * TILE_SIZE,
-      attackbox.startAngle,
-      attackbox.endAngle
-    );
-    context.strokeStyle = `rgba(255, 22, 22, 0.75)`;
-    context.lineWidth = 2;
-    context.stroke();
-    context.restore();
   }
 
   private updateMobs(deltaSeconds: number) {
@@ -654,6 +576,107 @@ class GameEngine {
         playerHitbox.overlapsRect(mobHitbox) :
         playerHitbox.overlapsCircle(mobHitbox);
     }
+  }
+
+  // DEBUG ZONE
+  private drawDebugStats(context: CanvasRenderingContext2D, screenPosition: SimplePoint, player?: Player, mob?: Mob) {
+    // Debug center: draw dot at entity center.
+    // context.save();
+    // context.beginPath();
+    // context.arc(
+    //   screenPosition.x,
+    //   screenPosition.y,
+    //   2,
+    //   0,
+    //   Math.PI * 2
+    // );
+    // context.strokeStyle = "blue";
+    // context.lineWidth = 3;
+    // context.stroke();
+    // context.restore();
+
+    // Debug hitbox: circle in world coordinates, converted to pixels.
+    let rendering, attack;
+    if (player) {
+      rendering = player.rendering;
+      attack = player.attack;
+    } else {
+      if (mob) {
+        rendering = mob.base.rendering;
+        attack = mob.base.attack;
+      } else {
+        return;
+      }
+    }
+
+    const size = rendering.size;
+    const hitbox = rendering.hitbox;
+
+    if (mob) {
+      context.strokeText(
+        mob.base.movementSpeed.toPrecision(4).toString(),
+        screenPosition.x - (size.width / 2),
+        screenPosition.y - (size.height / 2) - 15
+      );
+
+      context.strokeText(
+        mob.base.action,
+        screenPosition.x - (size.width / 2),
+        screenPosition.y - (size.height / 2) - 5
+      );
+    }
+
+    context.save();
+    context.beginPath();
+    if (hitbox instanceof TileRect) {
+      context.rect(
+        screenPosition.x - (size.width / 2),
+        screenPosition.y - (size.height / 2),
+        hitbox.width * TILE_SIZE,
+        hitbox.height * TILE_SIZE
+      );
+    } else {
+      context.arc(
+        screenPosition.x,
+        screenPosition.y,
+        hitbox.radius * TILE_SIZE,
+        0,
+        Math.PI * 2
+      );
+    }
+    context.strokeStyle = `rgba(248, 112, 112, 0.75)`;
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
+
+    // Debug attack range: in world coordinates, converted to pixels.
+    let attackbox = rendering.hitbox.copy();
+    attackbox.increaseSize(attack.range);
+    if (attackbox instanceof TileRect) {
+      attackbox = attackbox.toTileCirlce();
+    }
+
+    context.save();
+    context.beginPath();
+    // if (attackbox instanceof TileRect) {
+    //   context.rect(
+    //     screenPosition.x - ((attackbox.width * TILE_SIZE) / 2),
+    //     screenPosition.y - ((attackbox.height * TILE_SIZE) / 2),
+    //     attackbox.width * TILE_SIZE,
+    //     attackbox.height * TILE_SIZE
+    //   );
+    // }
+    context.arc(
+      screenPosition.x,
+      screenPosition.y,
+      attackbox.radius * TILE_SIZE,
+      attackbox.startAngle,
+      attackbox.endAngle
+    );
+    context.strokeStyle = `rgba(255, 22, 22, 0.75)`;
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
   }
 }
 

@@ -30,14 +30,14 @@ function isSettings(value: unknown): value is Settings {
 }
 
 interface SettingsMenuProps {
-  isOpen: boolean;
+  showSettingsMenu: boolean;
   gameState: GameState;
   onImportSave: (gameState: GameState) => void;
   onBack: () => void;
   onClose: () => void;
 }
 
-const SettingsMenu = ({ isOpen, gameState, onImportSave, onBack, onClose }: SettingsMenuProps) => {
+const SettingsMenu = ({ showSettingsMenu, gameState, onImportSave, onBack, onClose }: SettingsMenuProps) => {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [status, setStatus] = useState("");
   const [password, setPassword] = useState("");
@@ -111,20 +111,20 @@ const SettingsMenu = ({ isOpen, gameState, onImportSave, onBack, onClose }: Sett
   }
 
   return (
-    <section className={`settings-menu-panel ${isOpen ? "open" : ""}`} aria-label="Settings">
-      <button
+    <section className={`settings-menu-panel ${showSettingsMenu ? "open" : ""}`} aria-label="Settings">
+      {/* <button
         className="settings-menu-back"
         type="button"
         aria-label="Back to stats"
         onClick={onBack}
       >
         {"<"}
-      </button>
+      </button> */}
       <button
         className="settings-menu-close"
         type="button"
         aria-label="Close settings and stats"
-        onClick={onClose}
+        onClick={onBack}
       >
         ×
       </button>

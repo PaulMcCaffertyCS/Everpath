@@ -1,5 +1,5 @@
 // "IPC" in `ipcMain` stands for "Inter-Process Communication"
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
@@ -22,6 +22,87 @@ function createWindow() {
       nodeIntegration: false
     }
   });
+
+  const menuTemplate: Array<Electron.MenuItemConstructorOptions | Electron.MenuItem> = [
+    {
+      label: "File",
+      submenu: [
+        { role: "quit" }
+      ]
+    },
+    {
+      label: "Debug",
+      submenu: [
+        {
+          label: "DEVELOPER ONLY",
+          type: "header"
+        },
+        {
+          label: "Game Breaking May Occur",
+          type: "normal"
+        },
+        {
+          label: "Toggle Hitboxes",
+          type: "checkbox",
+          checked: false,
+          accelerator: "CmdOrCtrl+H",
+          click: (menuItem) => {
+            window.webContents.send("toggle-hitboxes", menuItem.checked);
+          }
+        }
+      ]
+    },
+    // {
+    //   label: "Edit",
+    //   submenu: [
+    //     { role: "undo" },
+    //     { role: "redo" },
+    //     { type: "separator" },
+    //     { role: "cut" },
+    //     { role: "copy" },
+    //     { role: "paste" },
+    //     { role: "delete" },
+    //     { type: "separator" },
+    //     { role: "selectAll" }
+    //   ]
+    // },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { type: "separator" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" }, // Actual Size
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" }
+      ]
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        { role: "close" }
+      ]
+    },
+    {
+      label: "Help",
+      submenu: [
+        { role: "about" },
+        // { role: "learnMore" }, // Doesn't Exist - Electron preset
+        // { role: "documentation" }, // Doesn't Exist - Electorn preset
+        // { role: "communityDiscussions"}, // Doesn't Exist - Electron preset
+        // { role: "searchIssues"}, // Doesn't Exist - Electron preset
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(menu);
 
   if (app.isPackaged) {
     window.loadFile(

@@ -18,6 +18,15 @@ contextBridge.exposeInMainWorld(
       return ipcRenderer.invoke(
         "open-text-file"
       );
+    },
+
+    onToggleHitboxes: (callback: (show: boolean) => void) => {
+      const subscription = (_event: any, show: boolean) => callback(show);
+      ipcRenderer.on("toggle-hitboxes", subscription);
+
+      return () => {
+        ipcRenderer.removeListener("toggle-hitboxes", subscription);
+      };
     }
   }
 );

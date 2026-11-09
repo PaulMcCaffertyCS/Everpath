@@ -95,7 +95,7 @@ const StatsMenu = ({ gameState, onImportSave, setShowPlayerMenu, showStatsMenu, 
         </div>
       </div>
       <SettingsMenu
-        isOpen={showSettingsMenu}
+        showSettingsMenu={showSettingsMenu}
         gameState={gameState}
         onImportSave={onImportSave}
         onBack={() => setShowSettingsMenu(false)}

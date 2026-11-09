@@ -11,7 +11,7 @@ import { zipToRecord } from "../utils/typescript/TypeScript.js";
 const PLAYER_SIZE = new SimpleSize(26, 32);
 const PLAYER_HITBOX: SimpleShape = new SimpleShape("rectangle");
 const MOB_SIZES: Record<MobSpecies, SimpleSize> = {
-  "dragon": new SimpleSize(40, 34),
+  "dragon": new SimpleSize(70, 52),
   "goblin": new SimpleSize(26, 32),
   "slime": new SimpleSize(24, 22)
 };
@@ -101,10 +101,10 @@ type ShopType = "alchemy" | "dark" | "farm" | "forge" | "general" | "herbal" | "
 /**
  * Biome Typing
  */
-const biomes = ["astridland", "forest", "hills", "lake", "meadow", "mountains", "ruins", "swamp"] as const;
+const biomes = ["dragontopia", "forest", "hills", "lake", "meadow", "mountains", "ruins", "swamp"] as const;
 type BiomeType = typeof biomes[number];
 
-const biomeColors = ["#925ba8", "#24452f", "#4a4630", "#02678f", "#38533a", "#83807e", "#353338", "#293c36"] as const;
+const biomeColors = ["#29d9f0", "#24452f", "#4a4630", "#02678f", "#38533a", "#83807e", "#353338", "#293c36"] as const;
 type BiomeColor = typeof biomeColors[number];
 
 const biomeToColor: Record<BiomeType, BiomeColor> = zipToRecord(biomes, biomeColors);

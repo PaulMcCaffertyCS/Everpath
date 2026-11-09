@@ -5,6 +5,7 @@ import PlayerMenu from "./components/player/PlayerMenu";
 import GameEngine from "./game/engine";
 import { createNewGame } from "./game/state";
 import { slimeSpriteDown } from "../utils/ImageUtils";
+import DebugOverlay from "./components/DebugOverlay";
 
 export default function App() {
   const [engine] = useState(() => new GameEngine(createNewGame()));
@@ -12,11 +13,18 @@ export default function App() {
   const [showPlayerMenu, setShowPlayerMenu] = useState(false);
 
   useEffect(() => {
+    const hitboxesUnsubscribe = window.electronAPI.onToggleHitboxes((isChecked: boolean) => {
+      engine.showHitboxes = isChecked;
+    })
+
     const renderInterval = window.setInterval(() => {
       return forceRender(value => value + 1)
     }, 250);
 
-    return () => clearInterval(renderInterval);
+    return () => {
+      hitboxesUnsubscribe();
+      clearInterval(renderInterval);
+    }
   }, []);
 
   const state = engine.state;
@@ -30,6 +38,10 @@ export default function App() {
         />
       </div>
       <div className="game-canvas-overlay">
+        <DebugOverlay
+          world={state.world}
+          player={state.player}
+        />
         <PlayerMenu
           gameState={state}
           onImportSave={importedState => {

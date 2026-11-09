@@ -45,7 +45,7 @@ function blend(hexOne: HexColor, hexTwo: HexColor, tile: number): HexColor {
   const amount = smoothstep(Math.max(0, Math.min(1, tile)));
 
   const channel = (from: number, to: number) => {
-    Math.round(from + (to - from) * amount).toString(16).padStart(2, "0");
+    return Math.round(from + (to - from) * amount).toString(16).padStart(2, "0");
   }
 
   return new HexColor(`#${channel(rgbOne.r, rgbTwo.r)}${channel(rgbOne.g, rgbTwo.g)}${channel(rgbOne.b, rgbTwo.b)}`);
