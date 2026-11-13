@@ -1,4 +1,5 @@
 import type { GameState } from "../../shared/types";
+import { calculateTownBounds } from "./world";
 import SimplePoint from "../../utils/typescript/SimplePoint";
 import SimpleSize from "../../utils/typescript/SimpleSize";
 import TileCircle from "../../utils/typescript/TileCircle";
@@ -55,6 +56,19 @@ function restoreGameObjects(state: GameState): GameState {
   }
 
   for (const chunk of Object.values(state.world.discovered)) {
+    chunk.dungeons ??= [];
+
+    for (const town of chunk.towns) {
+      town.purpose ??= "residential";
+      town.buildings ??= [
+        { id: `${town.id}-townhall`, type: "townhall", x: 0, y: 0 },
+        { id: `${town.id}-house-0`, type: "houseOneStory", x: -3, y: 0 },
+        { id: `${town.id}-house-1`, type: "houseTwoStory", x: 3, y: 0 },
+        { id: `${town.id}-generalStore`, type: "generalStore", x: 0, y: 3 }
+      ];
+      town.bounds ??= calculateTownBounds(chunk.cx, chunk.cy, town.x, town.y, town.buildings);
+    }
+
     for (const mob of chunk.mobs) {
       restoreMobObjects(mob);
     }

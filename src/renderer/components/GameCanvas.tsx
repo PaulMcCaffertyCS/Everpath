@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import GameEngine from "../game/engine";
-import { loadGameSprites } from "../game/sprites";
+import { loadBuildingSprites, loadGameSprites } from "../game/sprites";
 
 interface GameCanvasProps {
   engine: GameEngine;
@@ -34,6 +34,7 @@ export default function GameCanvas({ engine, onSwipeOpenPlayerMenu }: GameCanvas
     async function start() {
       try {
         const sprites = await loadGameSprites();
+        const buildingSprites = await loadBuildingSprites();
 
         const canvas = canvasRef.current;
         if (!canvas) {
@@ -52,7 +53,7 @@ export default function GameCanvas({ engine, onSwipeOpenPlayerMenu }: GameCanvas
           lastTime = currentTime;
 
           engine.update(deltaSeconds, keys);
-          engine.render(context!, canvas!.width, canvas!.height, sprites);
+          engine.render(context!, canvas!.width, canvas!.height, sprites, buildingSprites);
 
           const trail = swipeTrailRef.current;
           if (trail) {

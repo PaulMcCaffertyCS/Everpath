@@ -1,8 +1,8 @@
-import type { GameSprites } from "./sprites";
+import type { BuildingSprites, GameSprites } from "./sprites";
 import { ensureAroundPlayer } from "./world";
 import { mobDefinitions } from "./mobs";
-import { CHUNK_TILES, TILE_SIZE } from "../../shared/declarations";
-import type { Mob, GameState, Player } from "../../shared/types";
+import { BUILDING_HEIGHT, BUILDING_WIDTH, CHUNK_TILES, TILE_SIZE } from "../../shared/declarations";
+import type { BuildingType, Mob, GameState, Player } from "../../shared/types";
 import { PLAYER_RADIUS, MOB_RADIUS, biomeToColor } from "../../shared/types";
 import SimplePoint from "../../utils/typescript/SimplePoint";
 import { HexColor } from "../../utils/ColorUtils";
@@ -15,12 +15,13 @@ const BIOME_TRANSITION_WIDTH = 2;
 
 class GameEngine {
   showHitboxes: boolean = false;
+  showTownBounds: boolean = false;
 
   constructor(public state: GameState) {
     ensureAroundPlayer(this.state);
   }
 
-  render(context: CanvasRenderingContext2D, width: number, height: number, sprites: GameSprites) {
+  render(context: CanvasRenderingContext2D, width: number, height: number, sprites: GameSprites, buildingSprites: BuildingSprites) {
     const state = this.state;
     const player = state.player;
     const centerX = width / 2;
@@ -95,7 +96,11 @@ class GameEngine {
       }
     }
 
-    this.renderTowns(context, centerX, centerY);
+    this.renderTowns(context, centerX, centerY, buildingSprites);
+    this.renderDungeons(context, centerX, centerY, buildingSprites);
+    if (this.showTownBounds) {
+      this.renderTownBounds(context, centerX, centerY);
+    }
 
     for (const chunk of Object.values(this.state.world.discovered)) {
       for (const mob of chunk.mobs) {
@@ -108,42 +113,41 @@ class GameEngine {
 
   update(deltaSeconds: number, keys: Set<string>) {
     const speed = this.state.player.movementSpeed * deltaSeconds;
-    let dx = 0;
-    let dy = 0;
+    const delta = new SimplePoint(0, 0);
 
     if (keys.has("w") || keys.has("ArrowUp")) {
-      dy -= speed;
+      delta.y -= speed;
       this.state.player.direction = "up"
     }
 
     if (keys.has("s") || keys.has("ArrowDown")) {
-      dy += speed;
+      delta.y += speed;
       this.state.player.direction = "down"
     }
 
     if (keys.has("a") || keys.has("ArrowLeft")) {
-      dx -= speed;
+      delta.x -= speed;
       this.state.player.direction = "left"
     }
 
     if (keys.has("d") || keys.has("ArrowRight")) {
-      dx += speed;
+      delta.x += speed;
       this.state.player.direction = "right"
     }
 
-    if (dx !== 0 && dy !== 0) {
-      dx *= Math.SQRT1_2;
-      dy *= Math.SQRT1_2;
+    if (delta.x !== 0 && delta.y !== 0) {
+      delta.x *= Math.SQRT1_2;
+      delta.y *= Math.SQRT1_2;
     }
 
     const player = this.state.player;
 
-    const nextX = player.position.x + dx;
+    const nextX = player.position.x + delta.x;
     if (this.canPlayerMoveToTile(nextX, player.position.y, PLAYER_RADIUS)) {
       player.position.x = nextX;
     }
 
-    const nextY = player.position.y + dy;
+    const nextY = player.position.y + delta.y;
     if (this.canPlayerMoveToTile(player.position.x, nextY, PLAYER_RADIUS)) {
       player.position.y = nextY;
     }
@@ -168,7 +172,6 @@ class GameEngine {
     }
   }
 
-  // Seriously broken
   private biomeColorAt(worldPos: SimplePoint, fallback: string): HexColor {
     const chunkX = Math.floor(worldPos.x / CHUNK_TILES);
     const chunkY = Math.floor(worldPos.y / CHUNK_TILES);
@@ -241,36 +244,105 @@ class GameEngine {
     return random < blendAmount ? to : from;
   }
 
-  private renderTowns(ctx: CanvasRenderingContext2D, centerX: number, centerY: number) {
+  private renderTowns(context: CanvasRenderingContext2D, centerX: number, centerY: number, buildingSprites: BuildingSprites) {
     const player = this.state.player;
 
     for (const chunk of Object.values(this.state.world.discovered)) {
       for (const town of chunk.towns) {
-        const worldX = chunk.cx * CHUNK_TILES + town.x;
-        const worldY = chunk.cy * CHUNK_TILES + town.y;
-        const screenX = centerX + (worldX - player.position.x) * TILE_SIZE;
-        const screenY = centerY + (worldY - player.position.y) * TILE_SIZE;
-
-        if (screenX < -50 || screenX > 1000 || screenY < -50 || screenY > 1000) {
-          continue;
+        for (const building of town.buildings) {
+          this.renderBuilding(
+            context,
+            centerX,
+            centerY,
+            buildingSprites,
+            building.type,
+            chunk.cx * CHUNK_TILES + town.x + building.x,
+            chunk.cy * CHUNK_TILES + town.y + building.y
+          );
         }
+      }
+    }
+  }
 
-        ctx.fillStyle = "#c6a15b";
-        ctx.fillRect(
-          screenX + 3,
-          screenY + 2,
-          18,
-          20
-        );
-
-        ctx.fillStyle = "#6f4737";
-        ctx.fillRect(
-          screenX + 7,
-          screenY + 11,
-          10,
-          11
+  private renderDungeons(context: CanvasRenderingContext2D, centerX: number, centerY: number, buildingSprites: BuildingSprites) {
+    for (const chunk of Object.values(this.state.world.discovered)) {
+      for (const dungeon of chunk.dungeons) {
+        this.renderBuilding(
+          context,
+          centerX,
+          centerY,
+          buildingSprites,
+          "dungeon",
+          chunk.cx * CHUNK_TILES + dungeon.x,
+          chunk.cy * CHUNK_TILES + dungeon.y
         );
       }
+    }
+  }
+
+  private renderTownBounds(context: CanvasRenderingContext2D, centerX: number, centerY: number) {
+    const player = this.state.player;
+    context.save();
+    context.strokeStyle = "#00ffff";
+    context.lineWidth = 2;
+    context.setLineDash([8, 6]);
+
+    for (const chunk of Object.values(this.state.world.discovered)) {
+      for (const town of chunk.towns) {
+        const left = centerX + (town.bounds.minX - player.position.x) * TILE_SIZE;
+        const top = centerY + (town.bounds.minY - player.position.y) * TILE_SIZE;
+        const width = (town.bounds.maxX - town.bounds.minX) * TILE_SIZE;
+        const height = (town.bounds.maxY - town.bounds.minY) * TILE_SIZE;
+        context.strokeRect(left, top, width, height);
+      }
+    }
+
+    context.restore();
+  }
+
+  private renderBuilding(
+    context: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    buildingSprites: BuildingSprites,
+    type: BuildingType,
+    worldX: number,
+    worldY: number
+  ) {
+    const player = this.state.player;
+    const screenX = centerX + (worldX - player.position.x) * TILE_SIZE;
+    const screenY = centerY + (worldY - player.position.y) * TILE_SIZE;
+    const width = BUILDING_WIDTH;
+    const height = BUILDING_HEIGHT;
+
+    if (
+      screenX + width / 2 < 0
+      || screenX - width / 2 > context.canvas.width
+      || screenY + height / 2 < 0
+      || screenY - height / 2 > context.canvas.height
+    ) {
+      return;
+    }
+
+    context.drawImage(
+      buildingSprites[type],
+      screenX - width / 2,
+      screenY - height / 2,
+      width,
+      height
+    );
+
+    if (this.showHitboxes) {
+      context.save();
+      context.strokeStyle = "#ff00ff";
+      context.lineWidth = 1;
+      context.strokeRect(
+        screenX - width / 2,
+        screenY - height / 2,
+        width,
+        height
+      );
+      context.restore();
     }
   }
 
@@ -316,6 +388,8 @@ class GameEngine {
     if (this.showHitboxes) {
       this.drawDebugStats(context, screenPosition, undefined, mob);
     }
+
+    // console.log(`player world position: (x: ${player.position.x}, y: ${player.position.y})`);
   }
 
   private updateMobs(deltaSeconds: number) {
@@ -337,20 +411,36 @@ class GameEngine {
         const isHostile = definition.interactions.relationship === "hostile"
         if (isHostile && this.isPlayerWithinAttackRange(player.rendering.hitbox, mobAttackbox)) {
           mob.base.action = "attacking";
+
+          // if (mob.base.species === "dragon") {
+          //   console.log(`dragon world position: (x: ${mob.position.x}, y: ${mob.position.y})`);
+          // }
+
           continue;
         }
 
         if (isHostile && !this.isPlayerWithinAttackRange(player.rendering.hitbox, mobAttackbox)) {
           mob.base.action = "chasing";
 
+          const speed = mob.base.movementSpeed * deltaSeconds;
+
           const mobToPlayer = player.position.copy();
           mobToPlayer.minus(mob.position);
+
           const distanceToPlayer = Math.hypot(mobToPlayer.x, mobToPlayer.y);
+
           const direction = mobToPlayer.copy();
           direction.divideValue(distanceToPlayer);
-          const dPoint = direction.copy();
-          dPoint.multiplyValue(mob.base.movementSpeed * deltaSeconds);
-          this.moveMob(mob, dPoint);
+
+          const delta = direction.copy();
+          delta.multiplyValue(speed);
+
+          if (delta.x !== 0 && delta.y !== 0) {
+            delta.x *= Math.SQRT1_2;
+            delta.y *= Math.SQRT1_2;
+          }
+
+          this.moveMob(mob, delta);
 
           continue;
         }
@@ -360,12 +450,15 @@ class GameEngine {
           case "patrol": mob.base.action = "idle"; break;
           case "idiot": {
             const newMovementSpeed = 0 + Math.random() * 4;
-            // console.log(`newMovementSpeed=${newMovementSpeed}`);
             mob.base.movementSpeed = newMovementSpeed;
             this.updateWander(mob, deltaSeconds);
             break;
           }
           default: mob.base.action = "idle"; break;
+        }
+
+        if (mob.base.species === "dragon") {
+          console.log(`dragon world position: (x: ${mob.position.x}, y: ${mob.position.y})`);
         }
       }
     }
@@ -474,7 +567,7 @@ class GameEngine {
       }
     }
 
-    return true;
+    return !this.intersectsBuilding(futureHitbox);
   }
 
   private canMobMoveToTile(mob: Mob, x: number, y: number, radius: number): boolean {
@@ -487,6 +580,10 @@ class GameEngine {
     const futureHitbox = mob.base.rendering.hitbox instanceof TileRect ?
       TileRect.fromPointAndSize(futurePoint, mobSize) :
       TileCircle.fromPointAndSize(futurePoint, mobSize);
+
+    if (this.intersectsBuilding(futureHitbox)) {
+      return false;
+    }
 
     if (this.doHitboxesIntersect(futureHitbox, this.state.player.rendering.hitbox)) {
       return false;
@@ -505,6 +602,48 @@ class GameEngine {
     }
 
     return true;
+  }
+
+  private intersectsBuilding(hitbox: TileCircle | TileRect): boolean {
+    const halfWidth = BUILDING_WIDTH / TILE_SIZE / 2;
+    const halfHeight = BUILDING_HEIGHT / TILE_SIZE / 2;
+    const chunks = Object.values(this.state.world.discovered);
+
+    for (const chunk of chunks) {
+      for (const town of chunk.towns) {
+        for (const building of town.buildings) {
+          const worldX = chunk.cx * CHUNK_TILES + town.x + building.x;
+          const worldY = chunk.cy * CHUNK_TILES + town.y + building.y;
+          const buildingHitbox = new TileRect(
+            worldX - halfWidth,
+            worldY - halfHeight,
+            worldX + halfWidth,
+            worldY + halfHeight
+          );
+
+          if (this.doHitboxesIntersect(buildingHitbox, hitbox)) {
+            return true;
+          }
+        }
+      }
+
+      for (const dungeon of chunk.dungeons) {
+        const worldX = chunk.cx * CHUNK_TILES + dungeon.x;
+        const worldY = chunk.cy * CHUNK_TILES + dungeon.y;
+        const buildingHitbox = new TileRect(
+          worldX - halfWidth,
+          worldY - halfHeight,
+          worldX + halfWidth,
+          worldY + halfHeight
+        );
+
+        if (this.doHitboxesIntersect(buildingHitbox, hitbox)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   private isTerrainTileClear(x: number, y: number, radius: number): boolean {

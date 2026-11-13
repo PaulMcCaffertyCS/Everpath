@@ -94,9 +94,33 @@ type MobSpawnRule = {
 /**
  * Town Typing
  */
-type BuildingType = "house" | "hut" | "mansion";
+type BuildingType = "adventurerHall" | "armory" | "bank" | "blacksmith" | "chapel" | "dungeon" | "farmingSupplies" | "generalStore" | "guildHall" |
+  "houseOneStory" | "houseTwoStory" | "inn" | "library" | "magicShop" | "market" | "potions" | "restaurant" | "stable" | "townhall";
 
 type ShopType = "alchemy" | "dark" | "farm" | "forge" | "general" | "herbal" | "magic" | "music" | "restaurant" | "smithy";
+
+type TownPurpose = "agricultural" | "commercial" | "frontier" | "guild" | "residential" | "scholarly";
+
+interface TownBuilding {
+  id: string;
+  type: Exclude<BuildingType, "dungeon">;
+  x: number;
+  y: number;
+}
+
+interface Dungeon {
+  id: string;
+  x: number;
+  y: number;
+  townId?: string;
+}
+
+interface TownBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
 
 /**
  * Biome Typing
@@ -199,6 +223,7 @@ interface Chunk {
   difficulty: number;
   tiles: number[];
   towns: Town[];
+  dungeons: Dungeon[];
   encounters: Encounter[];
   mobs: Mob[];
 }
@@ -210,6 +235,9 @@ interface Town {
   y: number;
   generationIndex: number;
   shops: ShopType[];
+  purpose: TownPurpose;
+  buildings: TownBuilding[];
+  bounds: TownBounds;
 }
 
 interface Encounter {
@@ -243,9 +271,9 @@ export type {
   CharacterRace, CharacterRaceBeastmanVariant, CharacterRaceElfVariant, CharacterRaceUndeadVariant, CharacterClass,
   Direction, AttackType, Attack,
   MobSpecies, MobDragonVariant, MobGoblinVariant, MobClass, MobLanguage, MobBehavior, MobRelationship, TamingDifficulty, TamingMethod, MobSpawnRule,
-  BuildingType, ShopType,
+  BuildingType, ShopType, TownPurpose,
   BiomeType
 };
 
 // Interfaces
-export type { Player, MobBase, Mob, WorldState, Chunk, Town, Encounter, GameState };
+export type { Player, MobBase, Mob, WorldState, Chunk, Town, TownBuilding, Dungeon, TownBounds, Encounter, GameState };

@@ -1,8 +1,10 @@
 import { hashString, mulberry32 } from "./seed.js";
 import { mobDefinitions } from "./mobs.js";
-import { TILE_SIZE, CHUNK_TILES } from "../../shared/declarations.js";
+import { BUILDING_HEIGHT, BUILDING_WIDTH, TILE_SIZE, CHUNK_TILES } from "../../shared/declarations.js";
 import { biomes, MOB_HITBOXES } from "../../shared/types.js";
-import type { Mob, MobSpawnRule, BiomeType, Chunk, GameState, Encounter, Town } from "../../shared/types.js";
+import type {
+  BuildingType, Dungeon, Mob, MobSpawnRule, BiomeType, Chunk, GameState, Encounter, ShopType, Town, TownBounds, TownBuilding, TownPurpose
+} from "../../shared/types.js";
 import { randomInt } from "../../utils/MathUtils.js";
 import { capitalize } from "../../utils/StringUtils.js";
 import SimplePoint from "../../utils/typescript/SimplePoint.js";
@@ -92,6 +94,187 @@ function townName(rng: () => number, generationIndex: number): string {
   return generationIndex === 1 ? `${beginning}${ending}` : `${capitalize(ending)}${beginning.toLowerCase()}`;
 }
 
+type TownServiceBuilding = Exclude<BuildingType, "dungeon" | "guildHall" | "houseOneStory" | "houseTwoStory" | "townhall">;
+
+const townPurposes: TownPurpose[] = [
+  "agricultural",
+  "commercial",
+  "frontier",
+  "guild",
+  "residential",
+  "scholarly"
+];
+
+const townServiceBuildings: Record<TownPurpose, TownServiceBuilding[]> = {
+  agricultural: ["farmingSupplies", "stable", "market", "inn", "generalStore", "restaurant"],
+  commercial: ["market", "bank", "generalStore", "inn", "restaurant", "blacksmith"],
+  frontier: ["adventurerHall", "armory", "blacksmith", "chapel", "generalStore", "stable"],
+  guild: ["adventurerHall", "armory", "library", "inn", "blacksmith", "magicShop"],
+  residential: ["inn", "generalStore", "market", "chapel", "stable", "bank"],
+  scholarly: ["library", "chapel", "magicShop", "potions", "bank", "inn"]
+};
+
+const townServiceShops: Partial<Record<TownServiceBuilding, ShopType>> = {
+  adventurerHall: "general",
+  armory: "forge",
+  bank: "general",
+  blacksmith: "smithy",
+  chapel: "herbal",
+  farmingSupplies: "farm",
+  generalStore: "general",
+  inn: "restaurant",
+  library: "magic",
+  magicShop: "magic",
+  market: "general",
+  potions: "alchemy",
+  restaurant: "restaurant",
+  stable: "general"
+};
+
+const TOWN_BOUNDARY_MARGIN = 2;
+
+function calculateTownBounds(
+  cx: number,
+  cy: number,
+  townX: number,
+  townY: number,
+  buildings: TownBuilding[],
+  dungeon?: Dungeon
+): TownBounds {
+  const chunkX = cx * CHUNK_TILES;
+  const chunkY = cy * CHUNK_TILES;
+  const halfWidth = BUILDING_WIDTH / TILE_SIZE / 2;
+  const halfHeight = BUILDING_HEIGHT / TILE_SIZE / 2;
+  const buildingCenters = buildings.map(building => ({
+    x: chunkX + townX + building.x,
+    y: chunkY + townY + building.y
+  }));
+
+  if (dungeon) {
+    buildingCenters.push({
+      x: chunkX + dungeon.x,
+      y: chunkY + dungeon.y
+    });
+  }
+
+  return {
+    minX: Math.min(...buildingCenters.map(center => center.x - halfWidth)) - TOWN_BOUNDARY_MARGIN,
+    minY: Math.min(...buildingCenters.map(center => center.y - halfHeight)) - TOWN_BOUNDARY_MARGIN,
+    maxX: Math.max(...buildingCenters.map(center => center.x + halfWidth)) + TOWN_BOUNDARY_MARGIN,
+    maxY: Math.max(...buildingCenters.map(center => center.y + halfHeight)) + TOWN_BOUNDARY_MARGIN
+  };
+}
+
+function chooseTownServiceBuildings(
+  rng: () => number,
+  purpose: TownPurpose,
+  count: number
+): TownServiceBuilding[] {
+  const available = [...townServiceBuildings[purpose]];
+  const selected: TownServiceBuilding[] = [];
+
+  while (selected.length < count) {
+    const index = randomInt(rng, 0, available.length - 1);
+    selected.push(available.splice(index, 1)[0]);
+  }
+
+  return selected;
+}
+
+function townBuildingOffsets(rng: () => number, count: number): Array<{ x: number; y: number }> {
+  const offsets: Array<{ x: number; y: number }> = [];
+
+  for (let y = -6; y <= 6; y += 3) {
+    for (let x = -6; x <= 6; x += 3) {
+      if (x !== 0 || y !== 0) {
+        offsets.push({ x, y });
+      }
+    }
+  }
+
+  for (let i = offsets.length - 1; i > 0; i--) {
+    const swapIndex = randomInt(rng, 0, i);
+    [offsets[i], offsets[swapIndex]] = [offsets[swapIndex], offsets[i]];
+  }
+
+  return offsets.slice(0, count);
+}
+
+function generateTown(
+  key: string,
+  cx: number,
+  cy: number,
+  rng: () => number,
+  generationIndex: number
+): { town: Town; dungeon?: Dungeon } {
+  const id = `${key}-town`;
+  const purpose = townPurposes[randomInt(rng, 0, townPurposes.length - 1)];
+  const houseCount = randomInt(rng, 5, 8);
+  const hasDungeon = rng() < 0.18;
+  const guildHallLimit = Math.min(3, houseCount - 2 - Number(hasDungeon));
+  const guildHallCount = randomInt(rng, 0, guildHallLimit);
+  const maxServiceCount = Math.min(4, houseCount - 1 - guildHallCount - Number(hasDungeon));
+  const serviceCount = randomInt(rng, 1, maxServiceCount);
+  const serviceBuildings = chooseTownServiceBuildings(rng, purpose, serviceCount);
+
+  const townX = randomInt(rng, 8, CHUNK_TILES - 9);
+  const townY = randomInt(rng, 8, CHUNK_TILES - 9);
+  const buildings: TownBuilding[] = [{
+    id: `${id}-townhall`,
+    type: "townhall",
+    x: 0,
+    y: 0
+  }];
+  const additionalTypes: TownBuilding["type"][] = [
+    ...Array.from({ length: guildHallCount }, () => "guildHall" as const),
+    ...serviceBuildings,
+    ...Array.from({ length: houseCount }, () => rng() < 0.5 ? "houseOneStory" as const : "houseTwoStory" as const)
+  ];
+  const offsets = townBuildingOffsets(rng, additionalTypes.length + Number(hasDungeon));
+  let dungeon: Dungeon | undefined;
+
+  additionalTypes.forEach((type, index) => {
+    const offset = offsets[index];
+    buildings.push({
+      id: `${id}-${type}-${index}`,
+      type,
+      x: offset.x,
+      y: offset.y
+    });
+  });
+
+  if (hasDungeon) {
+    const offset = offsets[offsets.length - 1];
+    dungeon = {
+      id: `${id}-dungeon`,
+      townId: id,
+      x: townX + offset.x,
+      y: townY + offset.y
+    };
+  }
+
+  const serviceShops = serviceBuildings
+    .map(building => townServiceShops[building])
+    .filter((shop): shop is ShopType => shop !== undefined);
+
+  const town: Town = {
+    id,
+    name: townName(rng, generationIndex),
+    x: townX,
+    y: townY,
+    generationIndex,
+    shops: [...new Set(serviceShops)],
+    purpose,
+    buildings,
+    bounds: calculateTownBounds(cx, cy, townX, townY, buildings, dungeon)
+  };
+
+  return {
+    town,
+    dungeon
+  };
+}
+
 function generateChunk(state: GameState, cx: number, cy: number): Chunk {
   const key = chunkKey(cx, cy);
   const rng = mulberry32(
@@ -113,17 +296,21 @@ function generateChunk(state: GameState, cx: number, cy: number): Chunk {
   // }
 
   const towns: Town[] = [];
+  const dungeons: Dungeon[] = [];
 
-  if (rng() < 0.14) {
+  if (biome !== "lake" && rng() < 0.14) {
     const generationIndex = state.player.discoveredTownCount + 1;
+    const generatedTown = generateTown(key, cx, cy, rng, generationIndex);
+    towns.push(generatedTown.town);
 
-    towns.push({
-      id: `${key}-town`,
-      name: townName(rng, generationIndex),
-      x: Math.floor(rng() * (CHUNK_TILES - 6)) + 3,
-      y: Math.floor(rng() * (CHUNK_TILES - 6)) + 3,
-      generationIndex: generationIndex,
-      shops: ["smithy"]
+    if (generatedTown.dungeon) {
+      dungeons.push(generatedTown.dungeon);
+    }
+  } else if (rng() < 0.02) {
+    dungeons.push({
+      id: `${key}-wild-dungeon`,
+      x: randomInt(rng, 0, CHUNK_TILES - 1),
+      y: randomInt(rng, 0, CHUNK_TILES - 1)
     });
   }
 
@@ -153,6 +340,7 @@ function generateChunk(state: GameState, cx: number, cy: number): Chunk {
     difficulty,
     tiles,
     towns,
+    dungeons,
     encounters,
     mobs
   };
@@ -265,4 +453,4 @@ function ensureAroundPlayer(state: GameState) {
   }
 }
 
-export { chunkKey, difficultyForChunk, ensureChunk, ensureAroundPlayer };
+export { calculateTownBounds, chunkKey, difficultyForChunk, ensureChunk, ensureAroundPlayer };

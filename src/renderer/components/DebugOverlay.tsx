@@ -5,10 +5,20 @@ import type { Player, WorldState } from "../../shared/types"
 interface DebugOverlayProps {
   world: WorldState;
   player: Player;
+  showDebugOverlay: boolean;
 }
 
-const DebugOverlay = ({ world, player }: DebugOverlayProps) => {
-  return (
+const DebugOverlay = ({ world, player, showDebugOverlay }: DebugOverlayProps) => {
+  const currentTown = Object.values(world.discovered)
+    .flatMap(chunk => chunk.towns)
+    .find(town =>
+      player.position.x >= town.bounds.minX
+      && player.position.x <= town.bounds.maxX
+      && player.position.y >= town.bounds.minY
+      && player.position.y <= town.bounds.maxY
+    );
+
+  return showDebugOverlay ? (
     <div className="debug-overlay">
       <div className="muted">
         World seed
@@ -43,8 +53,24 @@ const DebugOverlay = ({ world, player }: DebugOverlayProps) => {
           return chunk.biome;
         }()}
       </strong>
+
+      <div className="muted top-margin">
+        Town / city
+      </div>
+
+      <strong>
+        {currentTown?.name ?? "Wilderness"}
+      </strong>
+
+      <div className="muted top-margin">
+        Coordinates
+      </div>
+
+      <strong>
+        {`x: ${player.position.x}, y: ${player.position.y}`}
+      </strong>
     </div>
-  )
+  ) : null;
 }
 
 export default DebugOverlay;

@@ -49,6 +49,24 @@ function createWindow() {
           click: (menuItem) => {
             window.webContents.send("toggle-hitboxes", menuItem.checked);
           }
+        },
+        {
+          label: "Toggle Town Boundaries",
+          type: "checkbox",
+          checked: false,
+          accelerator: "CmdOrCtrl+Shift+B",
+          click: (menuItem) => {
+            window.webContents.send("toggle-town-boundaries", menuItem.checked);
+          }
+        },
+        {
+          label: "Toggle Debug Overlay",
+          type: "checkbox",
+          checked: false,
+          accelerator: "CmdOrCtrl+Shift+O",
+          click: (menuItem) => {
+            window.webContents.send("toggle-debug-overlay", menuItem.checked);
+          }
         }
       ]
     },

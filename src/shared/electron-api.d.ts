@@ -6,6 +6,8 @@ declare global {
       saveTextFile: (defaultName: string, contents: string) => Promise<string | null>;
       openTextFile: () => Promise<string | null>;
       onToggleHitboxes: (callback: ((show: boolean) => void)) => () => void;
+      onToggleTownBoundaries: (callback: ((show: boolean) => void)) => () => void;
+      onToggleDebugOverlay: (callback: ((show: boolean) => void)) => () => void;
     };
   }
 }
